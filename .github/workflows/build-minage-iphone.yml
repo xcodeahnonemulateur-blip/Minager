@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   build-ipa:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 35
     steps:
       - name: Checkout
