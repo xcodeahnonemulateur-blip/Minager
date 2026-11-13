@@ -10,8 +10,8 @@ private enum Palette {
 
 struct DashboardView: View {
     @StateObject private var miner = DucoMiner()
-    @AppStorage("ducoUsername") private var username = ""
-    @State private var miningKey = ""
+    let account: WalletCredentials
+    let onDisconnect: () -> Void
     @Environment(\.scenePhase) private var phase
     @State private var showHelp = false
 
@@ -60,7 +60,7 @@ struct DashboardView: View {
             }
             Button("Fermer", role: .cancel) {}
         } message: {
-            Text("Crée un compte sur le portefeuille officiel Duino-Coin. Son identifiant est le destinataire des gains DUCO. Cake Wallet ne prend pas en charge DUCO. Ne saisis jamais une phrase de récupération ici.")
+            Text("Le compte choisi reçoit les DUCO éventuels. Tu dois saisir uniquement ton identifiant DUCO et ta clé de minage à la première ouverture. Jamais ton mot de passe ni une phrase de récupération. Les mineurs personnalisés non validés peuvent être bloqués par le réseau.")
         }
     }
 
@@ -126,28 +126,48 @@ struct DashboardView: View {
     }
 
     private var controls: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Compte de minage").font(.headline)
+        VStack(alignment: .leading, spacing: 15) {
+            HStack(spacing: 10) {
+                Image(systemName: "wallet.bifold.fill")
+                    .foregroundColor(Palette.cyan)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("COMPTE DUINO-COIN")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1.2).foregroundColor(Palette.muted)
+                    Text(account.username)
+                        .font(.system(size: 17, weight: .semibold))
+                        .lineLimit(1)
+                }
                 Spacer()
+                Button("Changer") {
+                    miner.stop(reason: "Changement de compte")
+                    onDisconnect()
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Palette.cyan)
+            }
+            Rectangle().fill(Palette.muted.opacity(0.18)).frame(height: 1)
+            Text("Les gains éventuels sont envoyés au compte DUCO indiqué. L'application ne connaît pas ton mot de passe.")
+                .font(.system(size: 12)).foregroundColor(Palette.muted)
+            HStack(spacing: 12) {
+                Button {
+                    UIApplication.shared.open(URL(string: "https://wallet.duinocoin.com/")!)
+                } label: {
+                    Label("Portefeuille", systemImage: "arrow.up.right.square")
+                        .font(.system(size: 13, weight: .medium))
+                }
                 Button(action: { showHelp = true }) {
                     Label("Aide", systemImage: "questionmark.circle")
-                        .font(.system(size: 12)).foregroundColor(Palette.cyan)
+                        .font(.system(size: 13, weight: .medium))
                 }
             }
-            TextField("Identifiant DUCO (pas une adresse BTC)", text: $username)
-                .textContentType(.username).textInputAutocapitalization(.never)
-                .autocorrectionDisabled().padding(13)
-                .background(Palette.background, in: RoundedRectangle(cornerRadius: 12))
-                .disabled(miner.isMining)
-            SecureField("Clé de minage (si activée)", text: $miningKey)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled().padding(13)
-                .background(Palette.background, in: RoundedRectangle(cornerRadius: 12))
-                .disabled(miner.isMining)
+            .foregroundColor(Palette.cyan)
+            .padding(.vertical, 2)
             Button {
                 if miner.isMining { miner.stop() }
-                else { miner.start(username: username, miningKey: miningKey) }
+                else {
+                    miner.start(username: account.username, miningKey: account.miningKey)
+                }
             } label: {
                 Label(miner.isMining ? "Arrêter le minage" : "Démarrer le minage",
                       systemImage: miner.isMining ? "stop.fill" : "play.fill")

@@ -12,17 +12,23 @@ Aucun gain en euros n'est promis ou simulé. L'App n'affiche **pas de faux solde
 
 1. Ouvrir https://wallet.duinocoin.com/ (site officiel).
 2. Créer un compte ou se connecter selon les conditions du service.
-3. Renseigner le **nom d'utilisateur DUCO** dans l'app, et la clé de minage si votre compte en impose une.
+3. À la première ouverture, saisir le **nom d'utilisateur DUCO** et la **Mining key** si elle est activée. Appuyer sur « Continuer ». Ces deux valeurs sont conservées localement dans le trousseau iOS (Keychain), jamais dans GitHub. Le bouton « Changer » efface l'association locale.
 4. Démarrer l'app **au premier plan**. Les gains éventuels sont crédités au compte DUCO par le réseau, pas à Cake Wallet.
 5. Consulter le solde et les options de transfert/conversion sur le site officiel. Les frais, seuils, liquidité et conditions d'âge peuvent empêcher la conversion en EUR.
 
 **Ne jamais inscrire une phrase de récupération de portefeuille dans l'application.**
 
+## Connexion au démarrage
+
+Un écran d'accueil élégant demande le nom d'utilisateur du **portefeuille Duino-Coin**, plus une **Mining key facultative**. Il ne demande **jamais** le mot de passe du wallet, sa phrase de récupération, ni une carte d'identité. Le terme « connexion » signifie **configurer l'identifiant destinataire** : l'application ne se connecte pas au compte Duino-Coin avec un mot de passe et ne vérifie pas l'identité du détenteur. L'utilisateur peut changer de profil dans le tableau de bord. Le minage ne commence pas automatiquement.
+
+> La Mining key doit être celle configurée dans wallet.duinocoin.com ; elle est différente du mot de passe du portefeuille.
+
 ## Construire sans Mac
 
-Dans le dépôt GitHub X-code., ouvrir **Actions > Minage iPhone - IPA (non signée) > Run workflow**.
+Dans le dépôt GitHub public Minager, ouvrir **Actions > Minage iPhone - IPA (non signée) > Run workflow**.
 Le workflow génère un artefact `Minage-iPhone-unsigned.ipa` grâce à XcodeGen et `xcodebuild` sous macOS.
-Sur Windows, installer cet IPA avec Sideloadly ou AltStore et son propre identifiant Apple. Une signature gratuite doit être renouvelée tous les 7 jours. Le dépôt est privé, et le workflow ne transmet aucune clé Apple.
+Sur Windows, installer cet IPA avec Sideloadly ou AltStore et son propre identifiant Apple. Une signature gratuite doit être renouvelée tous les 7 jours. Le dépôt est public, et le workflow ne transmet aucune clé Apple.
 
 ## Technique
 
