@@ -1,8 +1,8 @@
 # Minage iPhone ⛏️
 
-Application iOS 15+ expérimentale de minage Duino-Coin (DUCO-S1), adaptée à l'iPhone 7. Code source SwiftUI et compilation GitHub Actions.
+Application SwiftUI iOS 15+ expérimentale pour iPhone 7. Configuration de **Monero (XMR)** via une adresse publique Cake Wallet, ou **Duino-Coin (DUCO)**. Compilation avec GitHub Actions.
 
-**Statut** : prototype. La compilation GitHub Actions peut générer une IPA **non signée**, mais le fonctionnement du minage sur un iPhone 7 physique et l'obtention de récompenses ne sont pas encore validés. Aucune rentabilité n'est garantie.
+**Statut** : prototype. **Monero : adresse Cake Wallet prise en charge, moteur RandomX non implémenté, aucun XMR miné.** DUCO : moteur de minage expérimental non validé sur iPhone physique ni approuvé par le réseau. Les compilations produisent des IPA non signées, sans garantie de fonctionnement ni de revenus.
 
 - [Code source et instructions](Minage-iPhone/README.md)
 - [Application SwiftUI](Minage-iPhone/MinageApp)

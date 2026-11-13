@@ -42,7 +42,7 @@ struct DashboardView: View {
                         statusCard
                     }
                     infoCard
-                    Text("Duino-Coin indépendant • Version laboratoire 0.1")
+                    Text(account.currency == .monero ? "Monero • Portefeuille associé • Prototype" : "Duino-Coin indépendant • Prototype")
                         .font(.system(size: 11)).foregroundColor(Palette.muted)
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, 25)
