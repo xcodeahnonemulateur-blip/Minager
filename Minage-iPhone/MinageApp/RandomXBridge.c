@@ -1,6 +1,20 @@
 #include "RandomXBridge.h"
 #include "randomx.h"
 #include <stdlib.h>
+#include <stdint.h>
+#include <libkern/OSCacheControl.h>
+
+// The upstream ARM64 RandomX static archive references GCC's __clear_cache.
+// iOS exports sys_icache_invalidate instead. Provide the tiny ABI shim so the
+// unused JIT object can link; our miner explicitly runs the interpreter only.
+void __clear_cache(void *begin, void *end) {
+    uintptr_t first = (uintptr_t)begin;
+    uintptr_t last = (uintptr_t)end;
+    if (first != 0 && last > first) {
+        sys_icache_invalidate(begin, (size_t)(last - first));
+    }
+}
+
 
 struct minager_randomx {
     randomx_cache *cache;
