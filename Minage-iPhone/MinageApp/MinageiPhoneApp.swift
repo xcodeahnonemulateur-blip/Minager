@@ -8,12 +8,19 @@ struct MinageiPhoneApp: App {
         WindowGroup {
             Group {
                 if let credentials = wallet.account {
-                    DashboardView(account: credentials) {
-                        wallet.disconnect()
+                    if credentials.currency == .monero {
+                        MoneroDashboard(address: credentials.username) {
+                            wallet.disconnect()
+                        }
+                    } else {
+                        // Preserve earlier users' Duino-Coin profile and UI.
+                        DashboardView(account: credentials) {
+                            wallet.disconnect()
+                        }
                     }
                 } else {
-                    WalletSetupView { currency, username, miningKey in
-                        wallet.connect(currency: currency, username: username, miningKey: miningKey)
+                    WalletSetupView { currency, username, key in
+                        wallet.connect(currency: currency, username: username, miningKey: key)
                     }
                 }
             }

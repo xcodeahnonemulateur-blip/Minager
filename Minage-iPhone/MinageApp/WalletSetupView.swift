@@ -1,145 +1,144 @@
 import SwiftUI
 import UIKit
 
-/// Select a chain and record a PUBLIC mining-reward destination.
-/// This does not authorize transactions or turn on a miner.
 struct WalletSetupView: View {
     let onConnect: (WalletCurrency, String, String) -> Bool
-
-    @State private var currency: WalletCurrency = .monero
-    @State private var identifier = ""
-    @State private var miningKey = ""
+    @State private var address = ""
+    @State private var scannerPresented = false
+    @State private var photoPickerPresented = false
     @State private var errorMessage: String?
 
-    private let bg = Color(red: 0.035, green: 0.052, blue: 0.115)
-    private let surface = Color(red: 0.085, green: 0.12, blue: 0.21)
-    private let accent = Color(red: 0.25, green: 0.88, blue: 0.92)
-    private let subtle = Color(red: 0.65, green: 0.70, blue: 0.80)
+    private let background = Color(red: 0.035, green: 0.052, blue: 0.115)
+    private let panel = Color(red: 0.085, green: 0.12, blue: 0.21)
+    private let blue = Color(red: 0.25, green: 0.88, blue: 0.92)
 
     var body: some View {
         ZStack {
-            bg.ignoresSafeArea()
-            RadialGradient(colors: [accent.opacity(0.20), .clear],
-                           center: .top, startRadius: 0, endRadius: 350)
-                .ignoresSafeArea()
+            background.ignoresSafeArea()
+            RadialGradient(colors: [blue.opacity(0.19), .clear],
+                           center: .top, startRadius: 0, endRadius: 400).ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Image(systemName: "cpu.fill")
-                        .font(.system(size: 36))
-                        .foregroundColor(accent)
-                        .frame(width: 76, height: 76)
-                        .background(surface, in: RoundedRectangle(cornerRadius: 22))
-                        .padding(.bottom, 6)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Bienvenue sur")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(subtle)
-                        Text("Minage iPhone")
-                            .font(.system(size: 33, weight: .bold, design: .rounded))
-                        Text("Choisis ton portefeuille de destination, sans donner tes identifiants secrets.")
-                            .font(.system(size: 14))
-                            .foregroundColor(subtle)
+                VStack(alignment: .leading, spacing: 22) {
+                    HStack {
+                        Image(systemName: "cpu.fill")
+                            .font(.system(size: 31))
+                            .foregroundColor(blue)
+                            .frame(width: 68, height: 68)
+                            .background(panel, in: RoundedRectangle(cornerRadius: 19))
+                        Spacer()
+                        Text("iPHONE 7 · XMR").font(.caption).tracking(2).foregroundColor(blue)
                     }
-                    VStack(alignment: .leading, spacing: 15) {
-                        Label("CHOISIR UNE CRYPTOMONNAIE", systemImage: "wallet.bifold.fill")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(accent)
-                        Picker("Cryptomonnaie", selection: $currency) {
-                            ForEach(WalletCurrency.allCases) { coin in
-                                Text(coin == .monero ? "Monero XMR" : "DUCO").tag(coin)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: currency) { _ in
-                            identifier = ""
-                            miningKey = ""
-                            errorMessage = nil
-                        }
-                        if currency == .monero {
-                            Text("Compatible avec ton Cake Wallet")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(accent)
-                            Text("Ouvre Cake Wallet → Monero → Receive. Copie l'adresse publique XMR (95 caractères).")
-                                .font(.system(size: 12))
-                                .foregroundColor(subtle)
-                            TextField("Colle ton adresse Monero XMR", text: $identifier)
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.asciiCapable)
-                                .autocorrectionDisabled()
-                                .font(.system(size: 13, design: .monospaced))
-                                .padding(14)
-                                .background(bg, in: RoundedRectangle(cornerRadius: 12))
-                            Text("Le moteur RandomX n'est pas encore disponible. Cette étape associe seulement l'adresse publique à Minager, sans produire de XMR.")
-                                .font(.system(size: 12))
-                                .foregroundColor(.orange)
-                                .fixedSize(horizontal: false, vertical: true)
-                        } else {
-                            Text("Identifiant Duino-Coin")
-                                .font(.system(size: 13, weight: .semibold))
-                            TextField("Ton identifiant DUCO", text: $identifier)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .padding(14)
-                                .background(bg, in: RoundedRectangle(cornerRadius: 12))
-                            Text("Mining key (facultative)")
-                                .font(.system(size: 13, weight: .semibold))
-                            SecureField("La clé de minage, pas le mot de passe", text: $miningKey)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .padding(14)
-                                .background(bg, in: RoundedRectangle(cornerRadius: 12))
-                            Text("Le moteur DUCO reste expérimental et n'est pas validé par le réseau.")
-                                .font(.system(size: 12))
-                                .foregroundColor(.orange)
-                        }
-                        if let errorMessage = errorMessage {
-                            Text(errorMessage)
-                                .font(.system(size: 12))
-                                .foregroundColor(.orange)
-                        }
-                        Button(action: connect) {
-                            Label("Enregistrer le portefeuille", systemImage: "checkmark.shield.fill")
-                                .font(.system(size: 15, weight: .bold))
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Minage iPhone")
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                        Text("Connecte ton portefeuille Cake Wallet en scannant son QR code Monero.")
+                            .font(.system(size: 15))
+                            .foregroundColor(.gray)
+                    }
+                    VStack(spacing: 13) {
+                        Image(systemName: "qrcode.viewfinder")
+                            .font(.system(size: 80, weight: .ultraLight))
+                            .foregroundColor(blue)
+                            .frame(height: 115)
+                        Text("Une seule configuration")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Nous enregistrons seulement ton adresse publique XMR. Aucun mot de passe ni mot secret n'est demandé.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                        Button { scannerPresented = true } label: {
+                            Label("Scanner le QR code", systemImage: "camera.viewfinder")
+                                .font(.headline)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 15)
+                                .padding(.vertical, 16)
                         }
-                        .foregroundColor(bg)
-                        .background(accent, in: RoundedRectangle(cornerRadius: 14))
-                        .disabled(identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .opacity(identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.65 : 1)
+                        .foregroundColor(background)
+                        .background(blue, in: RoundedRectangle(cornerRadius: 14))
+                        Button { photoPickerPresented = true } label: {
+                            Label("Importer une photo du QR", systemImage: "photo.on.rectangle")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 13)
+                        }
+                        .foregroundColor(blue)
+                        .background(background, in: RoundedRectangle(cornerRadius: 14))
+                        Text("Même iPhone ? Dans Cake Wallet > Receive, enregistre une capture d'écran du QR, puis importe-la ici. Pour scanner par caméra, affiche le QR sur un autre écran.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(18)
-                    .background(surface, in: RoundedRectangle(cornerRadius: 21))
-                    VStack(alignment: .leading, spacing: 10) {
-                        Button {
-                            UIApplication.shared.open(URL(string: currency == .monero
-                                ? "https://cakewallet.com/" : "https://wallet.duinocoin.com/")!)
-                        } label: {
-                            Label(currency == .monero ? "Site officiel Cake Wallet" : "Portefeuille DUCO",
-                                  systemImage: "arrow.up.right.square")
-                                .font(.system(size: 13, weight: .semibold))
+                    .background(panel, in: RoundedRectangle(cornerRadius: 21))
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text("Ou coller l'adresse publique XMR")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.gray)
+                        TextField("Adresse XMR commençant par 4 ou 8", text: $address)
+                            .font(.system(size: 12, design: .monospaced))
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding(15)
+                            .background(panel, in: RoundedRectangle(cornerRadius: 12))
+                        Button { save(address) } label: {
+                            Label("Continuer avec cette adresse", systemImage: "arrow.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
                         }
-                        .foregroundColor(accent)
-                        Text("Jamais de phrase de récupération, jamais de mot de passe. Les données enregistrées restent dans le trousseau sécurisé iOS.")
+                        .foregroundColor(blue)
+                        .disabled(address.isEmpty)
+                        if let errorMessage = errorMessage {
+                            Text(errorMessage).foregroundColor(.orange)
+                                .font(.system(size: 12))
+                        }
+                        Label("Minage expérimental sur processeur A10 · Batterie et chaleur à surveiller", systemImage: "exclamationmark.triangle")
                             .font(.system(size: 11))
-                            .foregroundColor(subtle)
+                            .foregroundColor(.gray)
                     }
+                    Spacer(minLength: 12)
                 }
-                .frame(maxWidth: 480, alignment: .leading)
-                .padding(20)
+                .frame(maxWidth: 500)
+                .padding(22)
                 .frame(maxWidth: .infinity)
             }
         }
+        .sheet(isPresented: $scannerPresented) {
+            ZStack(alignment: .top) {
+                MoneroQRScanner(onScan: { value in
+                    scannerPresented = false
+                    save(value)
+                }, onError: { error in
+                    scannerPresented = false
+                    errorMessage = error
+                }).ignoresSafeArea()
+                Text("Cadre le QR de Cake Wallet")
+                    .font(.headline)
+                    .padding(14)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(.top, 26)
+            }
+        }
+        .sheet(isPresented: $photoPickerPresented) {
+            MoneroQRPhotoPicker(onScan: { value in
+                photoPickerPresented = false
+                save(value)
+            }, onError: { error in
+                photoPickerPresented = false
+                errorMessage = error
+            })
+        }
     }
 
-    private func connect() {
-        if onConnect(currency, identifier, miningKey) {
+    private func save(_ raw: String) {
+        guard let clean = MoneroQRCode.address(from: raw) else {
+            errorMessage = "Ce QR code ne contient pas une adresse publique Monero valide."
+            return
+        }
+        address = clean
+        if onConnect(.monero, clean, "") {
             errorMessage = nil
-            miningKey = ""
         } else {
-            errorMessage = currency == .monero
-                ? "Adresse XMR invalide : elle doit contenir 95 caractères et commencer par 4 ou 8."
-                : "Vérifie ton identifiant DUCO et ta Mining key."
+            errorMessage = "Impossible d'enregistrer l'adresse dans le trousseau de l'iPhone."
         }
     }
 }

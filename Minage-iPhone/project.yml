@@ -16,5 +16,10 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Minage iPhone"
+        INFOPLIST_KEY_NSCameraUsageDescription: "Scanner ton adresse publique Monero depuis le QR de Cake Wallet."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         CODE_SIGNING_ALLOWED: NO
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/MinageApp/RandomXBridge.h"
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/Vendor/RandomX/src"
+        LIBRARY_SEARCH_PATHS: "$(SRCROOT)/Vendor/lib"
+        OTHER_LDFLAGS: "-lrandomx -lc++"

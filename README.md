@@ -1,13 +1,13 @@
-# Minage iPhone ⛏️
+# Minager · iPhone 7 · Monero XMR
 
-Application SwiftUI iOS 15+ expérimentale pour iPhone 7. Configuration de **Monero (XMR)** via une adresse publique Cake Wallet, ou **Duino-Coin (DUCO)**. Compilation avec GitHub Actions.
+Application iOS 15+ open-source expérimentale pour l'iPhone 7 : associe ton portefeuille **Cake Wallet** via son QR code Monero, puis **tente un minage CPU RandomX light** tant que l'app est au premier plan.
 
-**Statut** : prototype. **Monero : adresse Cake Wallet prise en charge, moteur RandomX non implémenté, aucun XMR miné.** DUCO : moteur de minage expérimental non validé sur iPhone physique ni approuvé par le réseau. Les compilations produisent des IPA non signées, sans garantie de fonctionnement ni de revenus.
+**Ce projet n'est pas un portefeuille, un service financier, ou une promesse de gains.** L'IPA et le minage doivent encore être validés sur un appareil réel.
 
-- [Code source et instructions](Minage-iPhone/README.md)
-- [Application SwiftUI](Minage-iPhone/MinageApp)
-- [Compilation IPA sur GitHub Actions](../../actions/workflows/build-minage-iphone.yml)
+- Scanner caméra ou importer une capture du QR si Cake Wallet est sur le même téléphone ; jamais besoin de dévoiler les mots secrets.
+- Démarrage après association du QR, statistiques de calcul / parts reçues du pool, arrêt manuel et surveillance thermique.
+- Onglets **Minage**, **Transfert**, **Réglages**.
+- L'onglet **Transfert** affiche les seuils officiels de HashVault. Les versements sont faits par le pool après seuil, **pas par l'app** ; pas de fausse transaction.
+- Compilation automatique macOS par GitHub Actions, puis signature personnelle sous Windows. Pas d'Apple Developer payant requis pour le test de 7 jours.
 
-La compilation ne constitue pas une installation directe : l'IPA doit être signée sur le compte Apple de l'utilisateur, puis installée avec un outil compatible.
-
-**Sécurité et réseau** : l'app est une expérimentation locale. Duino-Coin interdit certains clients non vérifiés ; obtenir l'autorisation du réseau avant de soumettre des parts sur un compte réel. Ne jamais saisir de phrase de récupération ni de mot de passe de portefeuille dans cette application.
+[Instructions détaillées](Minage-iPhone/README.md) · [Code Swift de l'app](Minage-iPhone/MinageApp) · [Compiler une IPA](../../actions/workflows/build-minage-iphone.yml)

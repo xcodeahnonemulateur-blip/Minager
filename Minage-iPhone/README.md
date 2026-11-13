@@ -1,63 +1,48 @@
-# Minage iPhone • expérimentation iOS 15
+# Minage iPhone : XMR sur iPhone 7 (iOS 15+)
 
-Une application SwiftUI destinée à l'iPhone 7 (A10 Fusion) et à iOS 15+.
+**Statut : prototype compilable à tester sur un iPhone 7 physique, pas une source de revenus garantie.**
 
-## Monero dans Cake Wallet (nouveau)
+## Nouveau parcours : QR de Cake Wallet
 
-Le projet propose désormais, au premier lancement, le choix **Monero (XMR)** compatible avec le portefeuille Cake Wallet, ou **Duino-Coin (DUCO)**. Pour XMR, aller dans Cake Wallet → Monero → Receive et copier l'**adresse publique XMR** (95 caractères, commençant par 4 ou 8). L'application n'enregistre que l'adresse, jamais une phrase de récupération ni un mot de passe.
+1. Dans Cake Wallet, ouvrir le portefeuille **Monero XMR** puis **Receive / Recevoir** : il affiche l'adresse publique et un QR code.
+2. Dans **Minage iPhone**, au premier démarrage, toucher **Scanner le QR code** et viser le code depuis **un deuxième écran**. Si tu utilises le même iPhone, sauvegarde une capture d'écran du QR puis touche **Importer une photo du QR**. La saisie de l'adresse publique reste possible.
+3. Seules les adresses publiques XMR de 95 caractères sont acceptées. Les formats `monero:...` et `cakewallet:monero?address=...` sont pris en charge. Les QR de récupération, mots de passe et clés privées sont refusés.
+4. L'adresse est conservée dans le trousseau de l'iPhone (Keychain). Une fois l'adresse enregistrée, l'app **essaie automatiquement** de lancer le minage, sans demander de confirmation supplémentaire, comme demandé par l'utilisateur. Le bouton **Arrêter** reste toujours disponible.
+5. Le minage cesse dès que l'app passe en arrière-plan ou si l'iPhone surchauffe.
 
-**Important : le minage Monero n'est PAS implémenté dans ce projet.** L'interface permet d'associer une adresse XMR, mais **aucun XMR n'est miné ni transféré** ; le bouton de minage XMR n'existe pas. Il faudra écrire/intégrer un moteur **RandomX en mode light** compatible iOS, valider les performances et le protocole d'un pool réel, puis tester sur iPhone 7.
+## Moteur de minage et sécurité
 
-L'iPhone 7 dispose de 2 Go RAM. RandomX fast demande ~2080 MiB, RandomX light 256 MiB mais est très lent, et la rentabilité pourrait être inférieure aux frais d'électricité. Aucun revenu ni délai de paiement garanti.
+- Moteur CPU **RandomX light** : `256 MiB` pour le cache, VM interprétée, un seul worker, sans JIT ni dataset de 2 GiB, pauses pour limiter la chaleur ; versions `rx/0` et `rx/2` selon le travail du pool.
+- Source : projet RandomX officiel `tevador/RandomX`, dépendance **BSD-3-Clause** clonée à une révision épinglée au moment du build. Sa licence est embarquée dans l'application. Voir `RandomXBridge.c` et `MoneroMineEngine.swift`.
+- Pool expérimental : **HashVault** `pool.hashvault.pro:443`, Stratum JSON-RPC sur **TLS**, adresse publique XMR comme identifiant. Partages de calcul (`shares`) soumis via `submit` ; seuls les retours du serveur comptent pour les parts acceptées.
+- Les calculs et la connexion Stratum sont codés et compilés, mais **aucune part acceptée sur un iPhone 7 physique n'a encore été démontrée**. Les performances et la compatibilité du protocole restent à valider sur matériel réel.
+- Ne jamais laisser un iPhone 7 ancien charger et miner sans surveillance ; vérifier l'état et la température de la batterie. Aucune exécution en tâche de fond ni contournement d'iOS.
+- Pas de pub, pas de code payant, pas de réseau tiers autre que le pool et l'API utilisée pour les statistiques.
 
-Sources : https://cakewallet.com/ , https://github.com/tevador/RandomX et https://docs.cakewallet.com/cryptos/monero/
+## Onglet Transfert
 
-## Statut honnête
+Les XMR ne sont pas détenus par cette application. Les récompenses accumulées au pool sont versées à **la même adresse XMR qui a été scannée**, automatiquement lorsque les conditions de paiement du pool sont remplies.
 
-**Prototype de minage DUCO-S1 (SHA-1), non encore validé sur un iPhone 7 physique.**
-Le code effectue réellement le hachage et essaie de soumettre les parts au pool officiel Duino-Coin. La compatibilité du protocole doit être confirmée lors d'un premier lancement.
-Aucun gain en euros n'est promis ou simulé. L'App n'affiche **pas de faux solde**.
+- L'écran **Transfert** lit les seuils (`minimum`, `defaultWallet`) directement depuis `https://api.hashvault.pro/v3/monero` et essaie de lire les gains depuis l'API publique de statistiques associée à l'adresse.
+- Le seuil minimum technique et le seuil configuré pour un portefeuille sont différents. Un solde absent de l'API n'est pas interprété comme `0`.
+- Le bouton **Gérer le transfert sur HashVault** ouvre le site officiel du pool pour consulter les paiements et les réglages. **Il ne réalise pas une transaction Monero** : aucun endpoint public permettant de forcer un paiement à la demande n'a été confirmé. Ne pas donner une fausse confirmation de retrait.
+- Cake Wallet reçoit les XMR sur l'adresse associée, quand le pool envoie réellement une transaction. Le compte Cake Wallet doit être synchronisé pour afficher les fonds.
 
-## Portefeuille et gains
+## Compiler / installer depuis Windows
 
-1. Ouvrir https://wallet.duinocoin.com/ (site officiel).
-2. Créer un compte ou se connecter selon les conditions du service.
-3. À la première ouverture, saisir le **nom d'utilisateur DUCO** et la **Mining key** si elle est activée. Appuyer sur « Continuer ». Ces deux valeurs sont conservées localement dans le trousseau iOS (Keychain), jamais dans GitHub. Le bouton « Changer » efface l'association locale.
-4. Démarrer l'app **au premier plan**. Les gains éventuels sont crédités au compte DUCO par le réseau, pas à Cake Wallet.
-5. Consulter le solde et les options de transfert/conversion sur le site officiel. Les frais, seuils, liquidité et conditions d'âge peuvent empêcher la conversion en EUR.
+Un workflow GitHub Actions télécharge le code RandomX officiel épinglé, le compile pour iPhone arm64, génère le projet Xcode et produit une **IPA non signée**.
 
-**Ne jamais inscrire une phrase de récupération de portefeuille dans l'application.**
+1. Sur le dépôt public `Minager`, ouvrir **Actions**, sélectionner `Minage iPhone - IPA (non signée)` et lancer le workflow si aucun build récent n'est disponible.
+2. Si le workflow passe à l'état **Success**, télécharger l'artefact `Minage-iPhone-unsigned.zip` puis en extraire le fichier `.ipa`.
+3. Sur un PC Windows, signer et installer l'IPA avec Sideloadly ou AltStore, depuis le site officiel de l'outil. Un compte Apple gratuit nécessite en général un renouvellement de la signature après **7 jours**.
+4. Déverrouiller l'iPhone 7 et accorder l'accès à la caméra uniquement pour scanner le QR Monero si la fonction est utilisée.
 
-## Connexion au démarrage
+**Ne pas présenter une IPA comme installable tant que la compilation Xcode n'a pas réussi.** La publication sur l'App Store est distincte, et Apple n'autorise pas le minage CPU directement sur l'appareil dans les apps distribuées via l'App Store.
 
-Un écran d'accueil élégant demande le nom d'utilisateur du **portefeuille Duino-Coin**, plus une **Mining key facultative**. Il ne demande **jamais** le mot de passe du wallet, sa phrase de récupération, ni une carte d'identité. Le terme « connexion » signifie **configurer l'identifiant destinataire** : l'application ne se connecte pas au compte Duino-Coin avec un mot de passe et ne vérifie pas l'identité du détenteur. L'utilisateur peut changer de profil dans le tableau de bord. Le minage ne commence pas automatiquement.
+## Références techniques
 
-> La Mining key doit être celle configurée dans wallet.duinocoin.com ; elle est différente du mot de passe du portefeuille.
-
-## Construire sans Mac
-
-Dans le dépôt GitHub public Minager, ouvrir **Actions > Minage iPhone - IPA (non signée) > Run workflow**.
-Le workflow génère un artefact `Minage-iPhone-unsigned.ipa` grâce à XcodeGen et `xcodebuild` sous macOS.
-Sur Windows, installer cet IPA avec Sideloadly ou AltStore et son propre identifiant Apple. Une signature gratuite doit être renouvelée tous les 7 jours. Le dépôt est public, et le workflow ne transmet aucune clé Apple.
-
-## Technique
-
-- Cible : iOS 15+, SwiftUI, CryptoKit, Network.framework
-- Algorithme : DUCO-S1, SHA-1 du précédent hash concaténé au nonce décimal (selon le mineur officiel)
-- Pool : `https://server.duinocoin.com/getPool`
-- Protocole : `JOB,username,MEDIUM,key,` puis `nonce,hashrate,minerName,identifier,,sessionID`
-- Une seule tâche CPU à la fois, pauses de refroidissement, arrêt sur état thermique sérieux ou critique
-- Arrêt à la mise en arrière-plan : iOS ne garantit pas l'exécution continuelle sans premier plan
-- Aucun suivi analytique, publicité, abonnement, API payante ou clé privée dans l'app
-
-## Conditions du réseau : important avant utilisation
-
-Les conditions Duino-Coin du 11 janvier 2026 indiquent que les programmes miniers communautaires non vérifiés peuvent entraîner un **blocage de compte**. Ce projet iOS est expérimental et **n'est pas validé par l'équipe Duino-Coin**. Faire approuver ou vérifier le logiciel auprès du réseau avant de soumettre des parts avec son compte réel : https://duinocoin.com/terms
-
-Le compte DUCO demande une adresse e-mail. Pour envoyer les DUCO ou en demander l'échange, une vérification est obligatoire : photo du matériel minier et d'un papier indiquant l'identifiant et la date. La page officielle explique qu'elle ne requiert pas de carte d'identité ni de photo du visage : https://server.duinocoin.com/verify.html
-
-## Limites
-
-DUCO est une monnaie expérimentale et centralisée. Les frais de retrait/conversion peuvent dépasser les gains d'un téléphone aussi ancien. Ce dépôt **ne doit pas** être présenté comme une source de revenu fiable. Un usage intensif peut accélérer l'usure de la batterie ; ne pas laisser le téléphone charger sous une couverture ou sans surveillance. Apple's App Store interdit le minage on-device dans les applications distribuées sur sa boutique ; le projet cible une installation personnelle de test.
-
-Sources : https://github.com/duino-coin/duino-coin et https://developer.apple.com/app-store/review/guidelines/
+- https://github.com/tevador/RandomX (BSD-3-Clause)
+- https://github.com/xmrig/xmrig-proxy/blob/master/doc/STRATUM.md
+- https://hashvault.pro/monero/ports
+- https://hashvault.pro/monero/api
+- https://docs.cakewallet.com/faq/glossary/uri-scheme/

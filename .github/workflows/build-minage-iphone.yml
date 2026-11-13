@@ -10,27 +10,50 @@ permissions:
 jobs:
   build-ipa:
     runs-on: macos-15
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Installer XcodeGen
-        run: brew install xcodegen
-      - name: Générer le projet Xcode
+      - name: Install XcodeGen and CMake
+        run: brew install xcodegen cmake
+      - name: Fetch pinned official RandomX source
+        run: |
+          git clone https://github.com/tevador/RandomX.git Minage-iPhone/Vendor/RandomX
+          cd Minage-iPhone/Vendor/RandomX
+          git checkout --detach 6fe0e390acc28a50bfe7f59603c2a6effae4a7cd
+      - name: Build RandomX for iPhone 7 arm64
+        run: |
+          cd Minage-iPhone
+          cmake -S Vendor/RandomX -B randomx-build -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
+            -DARCH_ID=arm64 -DARM_ID=arm64 \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO
+          cmake --build randomx-build --config Release --target randomx --parallel 4
+          mkdir -p Vendor/lib
+          find randomx-build -name librandomx.a -print -exec cp {} Vendor/lib/librandomx.a \;
+          test -s Vendor/lib/librandomx.a
+          cp Vendor/RandomX/LICENSE MinageApp/RANDOMX-LICENSE.txt
+      - name: Generate Xcode project
         run: |
           cd Minage-iPhone
           xcodegen generate
-      - name: Compiler pour iPhone physique
+      - name: Build iPhone arm64 app without signing
         run: |
           cd Minage-iPhone
-          xcodebuild -project MinageiPhone.xcodeproj -scheme MinageiPhone -sdk iphoneos -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
-      - name: Créer IPA non signée
+          xcodebuild -project MinageiPhone.xcodeproj -scheme MinageiPhone \
+            -sdk iphoneos -configuration Release \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+      - name: Package unsigned IPA
         run: |
           cd Minage-iPhone
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/MinageiPhone.app Payload/
           zip -qry ../Minage-iPhone-unsigned.ipa Payload
-      - name: Publier l'IPA
+      - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
           name: Minage-iPhone-unsigned
