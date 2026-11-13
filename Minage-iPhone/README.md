@@ -2,6 +2,16 @@
 
 Une application SwiftUI destinée à l'iPhone 7 (A10 Fusion) et à iOS 15+.
 
+## Monero dans Cake Wallet (nouveau)
+
+Le projet propose désormais, au premier lancement, le choix **Monero (XMR)** compatible avec le portefeuille Cake Wallet, ou **Duino-Coin (DUCO)**. Pour XMR, aller dans Cake Wallet → Monero → Receive et copier l'**adresse publique XMR** (95 caractères, commençant par 4 ou 8). L'application n'enregistre que l'adresse, jamais une phrase de récupération ni un mot de passe.
+
+**Important : le minage Monero n'est PAS implémenté dans ce projet.** L'interface permet d'associer une adresse XMR, mais **aucun XMR n'est miné ni transféré** ; le bouton de minage XMR n'existe pas. Il faudra écrire/intégrer un moteur **RandomX en mode light** compatible iOS, valider les performances et le protocole d'un pool réel, puis tester sur iPhone 7.
+
+L'iPhone 7 dispose de 2 Go RAM. RandomX fast demande ~2080 MiB, RandomX light 256 MiB mais est très lent, et la rentabilité pourrait être inférieure aux frais d'électricité. Aucun revenu ni délai de paiement garanti.
+
+Sources : https://cakewallet.com/ , https://github.com/tevador/RandomX et https://docs.cakewallet.com/cryptos/monero/
+
 ## Statut honnête
 
 **Prototype de minage DUCO-S1 (SHA-1), non encore validé sur un iPhone 7 physique.**

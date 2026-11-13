@@ -24,17 +24,23 @@ struct DashboardView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     header
-                    orb
-                    HStack(spacing: 12) {
-                        metric("PUISSANCE", String(format: "%.0f", miner.hashrate), "H/s", "bolt.fill")
-                        metric("PARTS ACCEPTÉES", "\(miner.accepted)", "validées", "checkmark.seal.fill")
-                    }
-                    HStack(spacing: 12) {
-                        metric("REFUSÉES", "\(miner.rejected)", "parts", "xmark.circle.fill")
-                        metric("SESSION", formattedDuration, "écoulées", "clock.fill")
+                    if account.currency == .duinoCoin {
+                        orb
+                        HStack(spacing: 12) {
+                            metric("PUISSANCE", String(format: "%.0f", miner.hashrate), "H/s", "bolt.fill")
+                            metric("PARTS ACCEPTÉES", "\(miner.accepted)", "validées", "checkmark.seal.fill")
+                        }
+                        HStack(spacing: 12) {
+                            metric("REFUSÉES", "\(miner.rejected)", "parts", "xmark.circle.fill")
+                            metric("SESSION", formattedDuration, "écoulées", "clock.fill")
+                        }
+                    } else {
+                        moneroNotice
                     }
                     controls
-                    statusCard
+                    if account.currency == .duinoCoin {
+                        statusCard
+                    }
                     infoCard
                     Text("Duino-Coin indépendant • Version laboratoire 0.1")
                         .font(.system(size: 11)).foregroundColor(Palette.muted)
@@ -54,13 +60,16 @@ struct DashboardView: View {
             miner.stop()
             UIApplication.shared.isIdleTimerDisabled = false
         }
-        .alert("Ton portefeuille DUCO", isPresented: $showHelp) {
+        .alert(account.currency == .monero ? "Portefeuille Monero" : "Portefeuille DUCO", isPresented: $showHelp) {
             Button("Ouvrir le portefeuille") {
-                UIApplication.shared.open(URL(string: "https://wallet.duinocoin.com/")!)
+                UIApplication.shared.open(URL(string: account.currency == .monero
+                    ? "https://cakewallet.com/" : "https://wallet.duinocoin.com/")!)
             }
             Button("Fermer", role: .cancel) {}
         } message: {
-            Text("Le compte choisi reçoit les DUCO éventuels. Tu dois saisir uniquement ton identifiant DUCO et ta clé de minage à la première ouverture. Jamais ton mot de passe ni une phrase de récupération. Les mineurs personnalisés non validés peuvent être bloqués par le réseau.")
+            Text(account.currency == .monero
+                ? "Ton adresse publique XMR a été enregistrée localement. Elle ne donne aucun accès à tes fonds. Le moteur de minage Monero n'est pas encore développé et aucun XMR ne peut être gagné avec cette version."
+                : "La configuration DUCO associe ton identifiant et ta clé de minage facultative. Ne donne jamais ton mot de passe ou ta phrase de récupération. Les mineurs communautaires non validés peuvent être bloqués par le réseau.")
         }
     }
 
@@ -125,16 +134,43 @@ struct DashboardView: View {
         .background(Palette.panel, in: RoundedRectangle(cornerRadius: 20))
     }
 
+    private var moneroNotice: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "cpu.fill")
+                .font(.system(size: 46))
+                .foregroundColor(Palette.cyan)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+            Text("MONERO • RANDOMX")
+                .font(.system(size: 12, weight: .bold))
+                .tracking(2)
+                .foregroundColor(Palette.cyan)
+            Text("Portefeuille Cake Wallet associé")
+                .font(.system(size: 17, weight: .semibold))
+                .multilineTextAlignment(.center)
+            Text("Le minage XMR n'est pas actif : il faut encore intégrer et tester un moteur RandomX léger, adapté aux 2 Go de RAM de l'iPhone 7. Aucun gain n'est produit dans ce mode.")
+                .font(.system(size: 13))
+                .multilineTextAlignment(.center)
+                .foregroundColor(Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(22)
+        .background(Palette.panel, in: RoundedRectangle(cornerRadius: 20))
+    }
+
     private var controls: some View {
         VStack(alignment: .leading, spacing: 15) {
             HStack(spacing: 10) {
                 Image(systemName: "wallet.bifold.fill")
                     .foregroundColor(Palette.cyan)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("COMPTE DUINO-COIN")
+                    Text(account.currency == .monero ? "ADRESSE MONERO (XMR)" : "COMPTE DUINO-COIN")
                         .font(.system(size: 10, weight: .bold))
                         .tracking(1.2).foregroundColor(Palette.muted)
-                    Text(account.username)
+                    Text(account.currency == .monero
+                         ? String(account.username.prefix(12)) + "…" + String(account.username.suffix(9))
+                         : account.username)
                         .font(.system(size: 17, weight: .semibold))
                         .lineLimit(1)
                 }
@@ -147,36 +183,62 @@ struct DashboardView: View {
                 .foregroundColor(Palette.cyan)
             }
             Rectangle().fill(Palette.muted.opacity(0.18)).frame(height: 1)
-            Text("Les gains éventuels sont envoyés au compte DUCO indiqué. L'application ne connaît pas ton mot de passe.")
+            Text(account.currency == .monero
+                 ? "Ton adresse publique XMR est enregistrée sur cet iPhone. Les calculs Monero ne sont pas encore disponibles dans Minager."
+                 : "Les gains éventuels sont envoyés au compte DUCO indiqué. L'application ne connaît pas ton mot de passe.")
                 .font(.system(size: 12)).foregroundColor(Palette.muted)
-            HStack(spacing: 12) {
+            if account.currency == .duinoCoin {
+                HStack(spacing: 12) {
+                    Button {
+                        UIApplication.shared.open(URL(string: "https://wallet.duinocoin.com/")!)
+                    } label: {
+                        Label("Portefeuille", systemImage: "arrow.up.right.square")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    Button(action: { showHelp = true }) {
+                        Label("Aide", systemImage: "questionmark.circle")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                }
+                .foregroundColor(Palette.cyan)
+                .padding(.vertical, 2)
                 Button {
-                    UIApplication.shared.open(URL(string: "https://wallet.duinocoin.com/")!)
+                    if miner.isMining { miner.stop() }
+                    else {
+                        miner.start(username: account.username, miningKey: account.miningKey)
+                    }
                 } label: {
-                    Label("Portefeuille", systemImage: "arrow.up.right.square")
-                        .font(.system(size: 13, weight: .medium))
+                    Label(miner.isMining ? "Arrêter le minage" : "Démarrer le minage",
+                          systemImage: miner.isMining ? "stop.fill" : "play.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(maxWidth: .infinity).padding(.vertical, 15)
                 }
-                Button(action: { showHelp = true }) {
-                    Label("Aide", systemImage: "questionmark.circle")
-                        .font(.system(size: 13, weight: .medium))
+                .foregroundColor(Palette.background)
+                .background(miner.isMining ? Color.orange : Palette.cyan,
+                            in: RoundedRectangle(cornerRadius: 15))
+            } else {
+                HStack(spacing: 12) {
+                    Button {
+                        UIApplication.shared.open(URL(string: "https://cakewallet.com/")!)
+                    } label: {
+                        Label("Cake Wallet", systemImage: "arrow.up.right.square")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    Button(action: { showHelp = true }) {
+                        Label("Aide", systemImage: "questionmark.circle")
+                            .font(.system(size: 13, weight: .medium))
+                    }
                 }
+                .foregroundColor(Palette.cyan)
+                .padding(.vertical, 2)
+                Label("Minage XMR : moteur RandomX à intégrer",
+                      systemImage: "wrench.and.screwdriver.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.orange)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Palette.background, in: RoundedRectangle(cornerRadius: 12))
             }
-            .foregroundColor(Palette.cyan)
-            .padding(.vertical, 2)
-            Button {
-                if miner.isMining { miner.stop() }
-                else {
-                    miner.start(username: account.username, miningKey: account.miningKey)
-                }
-            } label: {
-                Label(miner.isMining ? "Arrêter le minage" : "Démarrer le minage",
-                      systemImage: miner.isMining ? "stop.fill" : "play.fill")
-                    .font(.system(size: 16, weight: .bold))
-                    .frame(maxWidth: .infinity).padding(.vertical, 15)
-            }
-            .foregroundColor(Palette.background)
-            .background(miner.isMining ? Color.orange : Palette.cyan,
-                        in: RoundedRectangle(cornerRadius: 15))
         }
         .padding(18).background(Palette.panel, in: RoundedRectangle(cornerRadius: 20))
     }
@@ -199,8 +261,10 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("À SAVOIR", systemImage: "info.circle.fill")
                 .font(.system(size: 11, weight: .bold)).foregroundColor(.orange)
-            Text("Ce compteur montre des calculs et des parts réellement soumises au pool, pas des euros. Le solde et les retraits sont consultables sur le portefeuille DUCO officiel.")
-            Text("Le minage s'arrête en arrière-plan et si la température du système devient trop élevée. Ne laisse pas un vieil iPhone branché sans surveillance.")
+            Text(account.currency == .monero
+                 ? "La configuration de l'adresse XMR n'est pas un minage. Le moteur RandomX n'est pas inclus dans cette version et aucun solde ni rendement n'est simulé."
+                 : "Ce compteur montre des calculs et des parts soumises au pool DUCO, pas des euros. Consulte le solde sur le portefeuille officiel.")
+            Text("Un iPhone 7 peut chauffer et user sa batterie en calcul intensif. Ne le laisse pas branché et sans surveillance.")
         }
         .font(.system(size: 12)).foregroundColor(Palette.muted)
         .frame(maxWidth: .infinity, alignment: .leading)

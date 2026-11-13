@@ -2,24 +2,65 @@ import Foundation
 import Combine
 import Security
 
-/// These are the public DUCO username and optional MINING key.
-/// Never store the wallet password or recovery phrase here.
+/// Mining destination only. No wallet password or recovery phrase is handled.
+enum WalletCurrency: String, Codable, CaseIterable, Identifiable {
+    case monero
+    case duinoCoin
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .monero: return "Monero (XMR)"
+        case .duinoCoin: return "Duino-Coin (DUCO)"
+        }
+    }
+}
+
 struct WalletCredentials: Codable, Equatable {
-    let username: String
-    let miningKey: String
+    let username: String // DUCO username, or PUBLIC Monero address.
+    let miningKey: String // DUCO only.
+    let currency: WalletCurrency
+
+    init(username: String, miningKey: String, currency: WalletCurrency) {
+        self.username = username
+        self.miningKey = miningKey
+        self.currency = currency
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case username, miningKey, currency
+    }
+
+    // Migration of DUCO-only profiles from the previous app version.
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        username = try values.decode(String.self, forKey: .username)
+        miningKey = try values.decode(String.self, forKey: .miningKey)
+        currency = try values.decodeIfPresent(WalletCurrency.self, forKey: .currency) ?? .duinoCoin
+    }
 }
 
 final class WalletConnection: ObservableObject {
     @Published private(set) var account: WalletCredentials? = WalletKeychain.load()
 
-    func connect(username: String, miningKey: String) -> Bool {
+    func connect(currency: WalletCurrency, username: String, miningKey: String) -> Bool {
         let clean = username.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard clean.range(of: "^[A-Za-z0-9_-]{2,40}$", options: .regularExpression) != nil,
-              !miningKey.contains(","), !miningKey.contains("\n"), !miningKey.contains("\r"),
-              miningKey.count <= 128 else {
-            return false
+        switch currency {
+        case .monero:
+            let base58 = Set("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+            // Basic format gate; not a full Monero checksum validation.
+            guard clean.count == 95,
+                  (clean.hasPrefix("4") || clean.hasPrefix("8")),
+                  clean.allSatisfy({ base58.contains($0) }) else { return false }
+        case .duinoCoin:
+            guard clean.range(of: "^[A-Za-z0-9_-]{2,40}$", options: .regularExpression) != nil,
+                  !miningKey.contains(","), !miningKey.contains("\n"), !miningKey.contains("\r"),
+                  miningKey.count <= 128 else { return false }
         }
-        let value = WalletCredentials(username: clean, miningKey: miningKey)
+        let value = WalletCredentials(username: clean,
+                                      miningKey: currency == .duinoCoin ? miningKey : "",
+                                      currency: currency)
         guard WalletKeychain.save(value) else { return false }
         account = value
         return true

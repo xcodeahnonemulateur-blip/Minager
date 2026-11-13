@@ -12,8 +12,8 @@ struct MinageiPhoneApp: App {
                         wallet.disconnect()
                     }
                 } else {
-                    WalletSetupView { username, miningKey in
-                        wallet.connect(username: username, miningKey: miningKey)
+                    WalletSetupView { currency, username, miningKey in
+                        wallet.connect(currency: currency, username: username, miningKey: miningKey)
                     }
                 }
             }
