@@ -1,0 +1,20 @@
+name: MinageiPhone
+options:
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  MinageiPhone:
+    type: application
+    platform: iOS
+    sources:
+      - MinageApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.minageiphone.lab
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Minage iPhone"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGNING_ALLOWED: NO
