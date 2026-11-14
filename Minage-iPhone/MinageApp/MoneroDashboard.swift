@@ -34,29 +34,35 @@ struct MoneroDashboard: View {
         .accentColor(blue)
         .preferredColorScheme(.light)
         .onAppear {
-            if !hasAppeared {
-                hasAppeared = true
-                resumeIfAllowed()
-            }
+            hasAppeared = true
+            // Some iOS 15 builds deliver .onAppear while the scene is still
+            // .inactive. Check again on the next main-loop turn.
+            DispatchQueue.main.async { resumeIfAllowed() }
         }
         .onChange(of: scenePhase) { phase in
             switch phase {
             case .active:
-                // Resume after temporary interruptions and actual backgrounding,
-                // but never override a manual pause.
-                resumeIfAllowed()
-            case .inactive:
-                miner.stop(reason: "Pause système : reprise à l'ouverture")
-                UIApplication.shared.isIdleTimerDisabled = false
+                DispatchQueue.main.async { resumeIfAllowed() }
             case .background:
-                miner.stop(reason: "En pause : iPhone verrouillé ou application fermée")
-                UIApplication.shared.isIdleTimerDisabled = false
+                pauseForBackground()
+            case .inactive:
+                // Temporary interruptions (Control Center, incoming calls,
+                // permission dialogs) are NOT a background transition.
+                // Stopping here stranded the miner at 0 H/s on iPhone 7.
+                break
             @unknown default:
                 break
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Additional lifecycle signal for iOS 15 / sideloaded installations.
+            DispatchQueue.main.async { resumeIfAllowed() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            pauseForBackground()
+        }
         .onChange(of: miner.running) { active in
-            UIApplication.shared.isIdleTimerDisabled = active && scenePhase == .active
+            UIApplication.shared.isIdleTimerDisabled = active && UIApplication.shared.applicationState == .active
         }
         .onChange(of: miner.status) { value in
             // Do not auto-restart immediately after an overheating or memory alert.
@@ -68,8 +74,17 @@ struct MoneroDashboard: View {
     }
 
     private func resumeIfAllowed() {
-        guard hasAppeared, wantsMining, scenePhase == .active, !miner.running else { return }
+        guard hasAppeared, wantsMining, !miner.running,
+              UIApplication.shared.applicationState == .active else { return }
         miner.start(to: address)
+    }
+
+    private func pauseForBackground() {
+        guard UIApplication.shared.applicationState == .background || scenePhase == .background else { return }
+        if miner.running {
+            miner.stop(reason: "En pause : application en arrière-plan")
+        }
+        UIApplication.shared.isIdleTimerDisabled = false
     }
 
     private var miningScreen: some View {
@@ -130,9 +145,11 @@ struct MoneroDashboard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 9) {
                 Circle()
-                    .fill(miner.running ? Color.green : Color.orange)
+                    .fill(miner.running && miner.hashes > 0 ? Color.green : Color.orange)
                     .frame(width: 10, height: 10)
-                Text(miner.running ? "Mineur activé" : (wantsMining ? "Connexion / reprise" : "Minage en pause"))
+                Text(miner.running
+                     ? (miner.hashes > 0 ? "Calcul RandomX actif" : "Connexion / initialisation")
+                     : "Minage arrêté")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(ink)
                 Spacer()
@@ -158,23 +175,27 @@ struct MoneroDashboard: View {
 
     private var actionButton: some View {
         Button {
-            if wantsMining {
+            if miner.running {
                 wantsMining = false
-                miner.stop(reason: "En pause, appuie sur Démarrer pour reprendre")
+                miner.stop(reason: "Arrêt manuel")
                 UIApplication.shared.isIdleTimerDisabled = false
             } else {
+                // The button always allows a real retry after a failed connect
+                // or unexpected pause, even if wantsMining was already true.
                 wantsMining = true
-                resumeIfAllowed()
+                if UIApplication.shared.applicationState == .active {
+                    miner.start(to: address)
+                }
             }
         } label: {
-            Label(wantsMining ? "Arrêter le minage" : "Démarrer le minage",
-                  systemImage: wantsMining ? "pause.fill" : "play.fill")
+            Label(miner.running ? "Arrêter le minage" : "Démarrer le minage",
+                  systemImage: miner.running ? "pause.fill" : "play.fill")
                 .font(.system(size: 18, weight: .bold))
                 .frame(maxWidth: .infinity)
                 .frame(height: 57)
         }
         .foregroundColor(.white)
-        .background(wantsMining ? ink : blue, in: RoundedRectangle(cornerRadius: 17))
+        .background(miner.running ? ink : blue, in: RoundedRectangle(cornerRadius: 17))
         .accessibilityHint("Met en pause ou reprend le calcul Monero sur cet iPhone")
     }
 
