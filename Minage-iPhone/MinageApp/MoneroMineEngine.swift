@@ -56,9 +56,8 @@ final class MoneroMineEngine: ObservableObject {
             guard let self = self, self.isRunning(myEpoch) else { return }
             self.running = true
             self.rate = 0
-            self.hashes = 0
-            self.accepted = 0
-            self.rejected = 0
+            // Keep genuine accumulated local stats when coming back from
+            // background. A temporary pause should not erase past hashes.
             self.status = "Connexion sécurisée au pool…"
         }
         // The UI must show the new state IMMEDIATELY when invoked from SwiftUI,
@@ -347,12 +346,13 @@ final class MoneroMineEngine: ObservableObject {
                 Thread.sleep(forTimeInterval: 0.025)
                 if Date().timeIntervalSince(tick) >= 5 {
                     let elapsed = max(Date().timeIntervalSince(tick), 0.1)
-                    let observedRate = Double(attempts - lastReported) / elapsed
-                    let observedHashes = attempts
+                    let delta = attempts - lastReported
+                    let observedRate = Double(delta) / elapsed
                     lastReported = attempts
                     DispatchQueue.main.async {
+                        guard self.isRunning(token) else { return }
                         self.rate = observedRate
-                        self.hashes = observedHashes
+                        self.hashes &+= delta
                     }
                     tick = Date()
                 }
