@@ -9,12 +9,17 @@ final class PoolTransferStats: ObservableObject {
     @Published var unpaidXMR: Double?
     @Published var paidXMR: Double?
     @Published var walletThresholdXMR: Double?
+    @Published var priceEUR: Double?
+    @Published var lastChecked: Date?
     @Published var status = "Statistiques du pool non chargées"
     @Published var updating = false
 
     func refresh(address: String) {
         guard !updating else { return }
         updating = true
+        unpaidXMR = nil
+        paidXMR = nil
+        walletThresholdXMR = nil
         status = "Lecture des statistiques officielles…"
         Task {
             defer { updating = false }
@@ -35,6 +40,11 @@ final class PoolTransferStats: ObservableObject {
                 }
                 if let fallback = (payout["defaultWallet"] as? NSNumber)?.doubleValue {
                     defaultPayoutXMR = fallback / atomic
+                }
+                if let market = root["market"] as? [String: Any],
+                   let eur = (market["price_eur"] as? NSNumber)?.doubleValue,
+                   eur > 0 {
+                    priceEUR = eur
                 }
                 status = "Seuils du pool mis à jour"
             } catch {
@@ -63,7 +73,12 @@ final class PoolTransferStats: ObservableObject {
                 } else if let threshold = (wallet["threshold"] as? NSNumber)?.doubleValue {
                     walletThresholdXMR = threshold / 1_000_000_000_000.0
                 }
-                status = "Données fournies par HashVault, pas par Cake Wallet"
+                lastChecked = Date()
+                if unpaidXMR == nil {
+                    status = "Solde non renseigné par l'API du pool"
+                } else {
+                    status = "Gains vérifiés auprès de HashVault"
+                }
             } catch {
                 // No invented zero balance when a wallet has no pool record.
             }
@@ -74,6 +89,7 @@ final class PoolTransferStats: ObservableObject {
 struct TransferPanel: View {
     let address: String
     @StateObject private var stats = PoolTransferStats()
+    @State private var showSendExplanation = false
 
     private let background = Color(red: 0.965, green: 0.973, blue: 0.985)
     private let ink = Color(red: 0.10, green: 0.15, blue: 0.25)
@@ -191,19 +207,20 @@ struct TransferPanel: View {
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
 
                     Button {
-                        // Copy only the public address, not any secret credentials.
-                        UIPasteboard.general.string = address
-                        UIApplication.shared.open(URL(string: "https://hashvault.pro/monero/dashboard")!)
+                        // Never invent a successful payment. The HashVault public
+                        // API has no documented manual payout endpoint.
+                        stats.refresh(address: address)
+                        showSendExplanation = true
                     } label: {
-                        Label("Gérer le seuil et les paiements", systemImage: "arrow.up.right.square")
-                            .font(.system(size: 14, weight: .semibold))
+                        Label("Envoyer vers Cake Wallet", systemImage: "paperplane.fill")
+                            .font(.system(size: 15, weight: .bold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                     }
                     .foregroundColor(.white)
                     .background(blue, in: RoundedRectangle(cornerRadius: 15))
 
-                    Text("Ton adresse XMR est copiée pour la coller sur HashVault. Aucun paiement n'est lancé par ce bouton : c'est le pool qui effectue les versements.")
+                    Text("Attention : ce bouton vérifie ton droit au paiement, mais ne déclenche pas de transaction. HashVault effectue les virements automatiquement après le seuil.")
                         .font(.system(size: 12))
                         .foregroundColor(secondary)
 
@@ -230,5 +247,12 @@ struct TransferPanel: View {
             }
         }
         .onAppear { stats.refresh(address: address) }
+        .alert("Paiement géré par HashVault", isPresented: $showSendExplanation) {
+            Button("Compris", role: .cancel) {}
+        } message: {
+            Text(stats.unpaidXMR == nil
+                ? "Le solde n'est pas encore disponible. Aucun retrait n'a été envoyé. HashVault effectue les paiements automatiques une fois le seuil atteint."
+                : "Solde en attente : \(String(format: "%.8f", stats.unpaidXMR ?? 0)) XMR. Aucun paiement n'a été déclenché. HashVault verse automatiquement les gains à Cake Wallet selon son seuil et son calendrier.")
+        }
     }
 }

@@ -6,6 +6,7 @@ struct MoneroDashboard: View {
     let address: String
     let onDisconnect: () -> Void
     @StateObject private var miner = MoneroMineEngine()
+    @StateObject private var rewards = PoolTransferStats()
     @State private var selectedTab = 0
     @State private var wantsMining = true
     @State private var hasAppeared = false
@@ -38,11 +39,13 @@ struct MoneroDashboard: View {
             // Some iOS 15 builds deliver .onAppear while the scene is still
             // .inactive. Check again on the next main-loop turn.
             DispatchQueue.main.async { resumeIfAllowed() }
+            rewards.refresh(address: address)
         }
         .onChange(of: scenePhase) { phase in
             switch phase {
             case .active:
                 DispatchQueue.main.async { resumeIfAllowed() }
+                rewards.refresh(address: address)
             case .background:
                 pauseForBackground()
             case .inactive:
@@ -93,6 +96,7 @@ struct MoneroDashboard: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     header
+                    earningsCard
                     statusCard
                     actionButton
 
@@ -139,6 +143,62 @@ struct MoneroDashboard: View {
                 .frame(width: 44, height: 44)
                 .background(card, in: RoundedRectangle(cornerRadius: 14))
             }
+    }
+
+    // Earnings are read from the pool's public wallet statistics.
+    // They are NEVER estimated from local hashes or shares.
+    private var earningsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Mes gains réels", systemImage: "wallet.bifold")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(ink)
+                Spacer()
+                Button {
+                    rewards.refresh(address: address)
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(blue)
+                }
+                .disabled(rewards.updating)
+                .accessibilityLabel("Actualiser mes gains")
+            }
+            Text(rewards.unpaidXMR.map { String(format: "%.8f XMR", $0) } ?? "Non disponible")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(ink)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+            if let xmr = rewards.unpaidXMR, let price = rewards.priceEUR {
+                Text("≈ \(String(format: "%.4f", xmr * price)) € • estimation, pas un solde en euros")
+                    .font(.system(size: 13))
+                    .foregroundColor(secondary)
+            }
+            Text("Récompenses en attente sur HashVault, pas encore envoyées à Cake Wallet.")
+                .font(.system(size: 11))
+                .foregroundColor(secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if rewards.unpaidXMR == nil {
+                Text("Le pool n'a pas encore fourni de solde vérifiable pour cette adresse.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Button {
+                selectedTab = 1
+            } label: {
+                Label("Versement vers Cake Wallet", systemImage: "arrow.right.circle.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+            }
+            .foregroundColor(blue)
+            .background(background, in: RoundedRectangle(cornerRadius: 13))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(17)
+        .background(card, in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var statusCard: some View {

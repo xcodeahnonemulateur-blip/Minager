@@ -46,3 +46,12 @@ Un workflow GitHub Actions télécharge le code RandomX officiel épinglé, le c
 - https://hashvault.pro/monero/ports
 - https://hashvault.pro/monero/api
 - https://docs.cakewallet.com/faq/glossary/uri-scheme/
+
+
+## Gains visibles et bouton « Envoyer »
+
+La page principale affiche le **solde XMR réel en attente sur HashVault** lorsque l'API le fournit, avec une valeur approximative en euros si le cours EUR est disponible. Ne jamais inventer 0 XMR, des récompenses à partir du nombre de hachages, ni un succès de transfert.
+
+L'onglet **Transfert** contient un bouton **« Envoyer vers Cake Wallet »** : cette version ne peut PAS envoyer les fonds en un clic, parce que l'API publique de HashVault ne documente aucun endpoint de paiement manuel. Le bouton actualise les informations et montre une alerte explicite. Les gains sont **versés automatiquement par HashVault** dès qu'ils sont éligibles selon le seuil et le traitement des paiements. Il faut éviter de tromper les utilisateurs avec un succès fictif.
+
+API officielle : https://hashvault.pro/monero/api
