@@ -1,172 +1,268 @@
 import SwiftUI
 import UIKit
 
-private enum MiningTheme {
-    static let bg = Color(red: 0.035, green: 0.052, blue: 0.115)
-    static let panel = Color(red: 0.09, green: 0.12, blue: 0.22)
-    static let aqua = Color(red: 0.24, green: 0.88, blue: 0.94)
-    static let subtle = Color(red: 0.61, green: 0.66, blue: 0.78)
-}
-
+// Main screen designed for the 4.7-inch iPhone 7: one action, genuine status.
 struct MoneroDashboard: View {
     let address: String
     let onDisconnect: () -> Void
     @StateObject private var miner = MoneroMineEngine()
     @State private var selectedTab = 0
-    @State private var startedOnce = false
+    @State private var wantsMining = true
+    @State private var hasAppeared = false
     @Environment(\.scenePhase) private var scenePhase
 
+    private let background = Color(red: 0.965, green: 0.973, blue: 0.985)
+    private let ink = Color(red: 0.10, green: 0.15, blue: 0.25)
+    private let blue = Color(red: 0.09, green: 0.36, blue: 0.91)
+    private let secondary = Color(red: 0.40, green: 0.45, blue: 0.54)
+    private let card = Color.white
+
     var body: some View {
-        ZStack {
-            MiningTheme.bg.ignoresSafeArea()
-            TabView(selection: $selectedTab) {
-                miningTab
-                    .tabItem { Label("Minage", systemImage: "cpu.fill") }
-                    .tag(0)
-                TransferPanel(address: address)
-                    .tabItem { Label("Transfert", systemImage: "arrow.left.arrow.right") }
-                    .tag(1)
-                settingsTab
-                    .tabItem { Label("Réglages", systemImage: "gearshape.fill") }
-                    .tag(2)
-            }
-            .tint(MiningTheme.aqua)
+        TabView(selection: $selectedTab) {
+            miningScreen
+                .tabItem { Label("Minage", systemImage: "cpu") }
+                .tag(0)
+
+            TransferPanel(address: address)
+                .tabItem { Label("Transfert", systemImage: "arrow.left.arrow.right") }
+                .tag(1)
+
+            settingsScreen
+                .tabItem { Label("Compte", systemImage: "wallet.bifold") }
+                .tag(2)
         }
+        .accentColor(blue)
+        .preferredColorScheme(.light)
         .onAppear {
-            if !startedOnce {
-                startedOnce = true
-                // The user explicitly requested mining immediately after QR association.
-                miner.start(to: address)
+            if !hasAppeared {
+                hasAppeared = true
+                resumeIfAllowed()
             }
         }
         .onChange(of: scenePhase) { phase in
-            if phase != .active {
-                miner.stop(reason: "Minage suspendu : application en arrière-plan")
+            switch phase {
+            case .active:
+                // Resume after temporary interruptions and actual backgrounding,
+                // but never override a manual pause.
+                resumeIfAllowed()
+            case .inactive:
+                miner.stop(reason: "Pause système : reprise à l'ouverture")
+                UIApplication.shared.isIdleTimerDisabled = false
+            case .background:
+                miner.stop(reason: "En pause : iPhone verrouillé ou application fermée")
+                UIApplication.shared.isIdleTimerDisabled = false
+            @unknown default:
+                break
+            }
+        }
+        .onChange(of: miner.running) { active in
+            UIApplication.shared.isIdleTimerDisabled = active && scenePhase == .active
+        }
+        .onChange(of: miner.status) { value in
+            // Do not auto-restart immediately after an overheating or memory alert.
+            if value.hasPrefix("Sécurité") || value.hasPrefix("Mémoire insuffisante") {
+                wantsMining = false
                 UIApplication.shared.isIdleTimerDisabled = false
             }
         }
-        .onChange(of: miner.running) { now in
-            UIApplication.shared.isIdleTimerDisabled = now
-        }
-        .onDisappear {
-            miner.stop()
-            UIApplication.shared.isIdleTimerDisabled = false
-        }
     }
 
-    private var miningTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("MINAGER").font(.system(size: 11, weight: .bold))
-                            .tracking(3).foregroundColor(MiningTheme.aqua)
-                        Text("Ton iPhone mine")
-                            .font(.system(size: 27, weight: .bold, design: .rounded))
+    private func resumeIfAllowed() {
+        guard hasAppeared, wantsMining, scenePhase == .active, !miner.running else { return }
+        miner.start(to: address)
+    }
+
+    private var miningScreen: some View {
+        ZStack {
+            background.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    header
+                    statusCard
+                    actionButton
+
+                    HStack(spacing: 12) {
+                        metric("Puissance réelle", String(format: "%.2f", miner.rate), "H/s")
+                        metric("Calculs effectués", miner.hashes.formatted(), "hashs")
                     }
-                    Spacer()
-                    Image(systemName: "iphone.gen3.radiowaves.left.and.right")
-                        .font(.system(size: 26)).foregroundColor(MiningTheme.aqua)
-                }
-                ZStack {
-                    Circle().stroke(MiningTheme.aqua.opacity(0.16), lineWidth: 1)
-                        .frame(width: 211, height: 211)
-                    Circle().fill(MiningTheme.aqua.opacity(miner.running ? 0.17 : 0.05))
-                        .frame(width: 154, height: 154).blur(radius: 18)
-                    Image(systemName: miner.running ? "bolt.horizontal.circle.fill" : "pause.circle.fill")
-                        .font(.system(size: 78, weight: .ultraLight))
-                        .foregroundColor(MiningTheme.aqua)
-                    VStack {
-                        Spacer()
-                        Text(miner.running ? "MINAGE EXPÉRIMENTAL" : "MINAGE ARRÊTÉ")
-                            .font(.system(size: 10, weight: .bold)).tracking(2)
-                            .foregroundColor(MiningTheme.aqua)
+                    HStack(spacing: 12) {
+                        compactMetric("Parts acceptées", "\(miner.accepted)", "checkmark.circle.fill")
+                        compactMetric("Parts refusées", "\(miner.rejected)", "xmark.circle")
                     }
-                    .frame(height: 246)
-                }
-                .frame(maxWidth: .infinity)
-                HStack(spacing: 12) {
-                    metric("PUISSANCE", String(format: "%.2f", miner.rate), "H/s")
-                    metric("PARTS VALIDÉES", "\(miner.accepted)", "pool")
-                }
-                HStack(spacing: 12) {
-                    metric("CALCULS", miner.hashes.formatted(), "RandomX light")
-                    metric("REFUSÉES", "\(miner.rejected)", "parts")
-                }
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("État du mineur", systemImage: "waveform.path.ecg")
-                        .font(.system(size: 12, weight: .bold)).foregroundColor(MiningTheme.aqua)
-                    Text(miner.status)
-                        .font(.system(size: 13)).foregroundColor(.white)
+
+                    Text("Un résultat peut prendre longtemps sur l'iPhone 7. 0 H/s au démarrage signifie que le calcul n'a pas encore commencé ou abouti.")
+                        .font(.system(size: 12))
+                        .foregroundColor(secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Minage RandomX light : iPhone à garder ouvert. Arrêt automatique si la température devient excessive.")
+                        .font(.system(size: 11))
+                        .foregroundColor(secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(MiningTheme.panel, in: RoundedRectangle(cornerRadius: 17))
-                Button {
-                    if miner.running { miner.stop() }
-                    else { miner.start(to: address) }
-                } label: {
-                    Label(miner.running ? "Arrêter le minage" : "Reprendre le minage",
-                          systemImage: miner.running ? "stop.fill" : "play.fill")
-                        .font(.system(size: 16, weight: .bold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 15)
-                }
-                .foregroundColor(MiningTheme.bg)
-                .background(miner.running ? Color.orange : MiningTheme.aqua,
-                            in: RoundedRectangle(cornerRadius: 16))
-                VStack(alignment: .leading, spacing: 7) {
-                    Text("RandomX light · 256 Mo · 1 tâche CPU")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text("Le minage ne garantit pas de gains. Un iPhone 7 est trop lent pour atteindre rapidement un seuil de paiement. Arrêt thermique et arrêt en arrière-plan activés.")
-                        .font(.system(size: 12))
-                        .foregroundColor(MiningTheme.subtle)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 17)
+                .padding(.top, 17)
+                .padding(.bottom, 28)
             }
-            .padding(20)
-            .padding(.bottom, 25)
         }
     }
 
-    private func metric(_ title: String, _ amount: String, _ unit: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.system(size: 10, weight: .bold))
-                .foregroundColor(MiningTheme.subtle)
-            Text(amount).font(.system(size: 25, weight: .bold, design: .rounded))
-                .lineLimit(1).minimumScaleFactor(0.5)
-                .monospacedDigit()
-            Text(unit).font(.system(size: 11)).foregroundColor(MiningTheme.subtle)
+    private var header: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("MINAGER")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(2.5)
+                    .foregroundColor(blue)
+                Text("Minage Monero")
+                    .font(.system(size: 25, weight: .bold, design: .rounded))
+                    .foregroundColor(ink)
+            }
+            Spacer()
+            Image(systemName: "cpu.fill")
+                .font(.system(size: 20))
+                .foregroundColor(blue)
+                .frame(width: 44, height: 44)
+                .background(card, in: RoundedRectangle(cornerRadius: 14))
+            }
+    }
+
+    private var statusCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 9) {
+                Circle()
+                    .fill(miner.running ? Color.green : Color.orange)
+                    .frame(width: 10, height: 10)
+                Text(miner.running ? "Mineur activé" : (wantsMining ? "Connexion / reprise" : "Minage en pause"))
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(ink)
+                Spacer()
+                Text("XMR")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(blue)
+            }
+            Text(miner.status)
+                .font(.system(size: 14))
+                .foregroundColor(secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Image(systemName: "network")
+                Text("Pool HashVault · RandomX light")
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(secondary)
         }
-        .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(MiningTheme.panel, in: RoundedRectangle(cornerRadius: 19))
+        .padding(18)
+        .background(card, in: RoundedRectangle(cornerRadius: 18))
     }
 
-    private var settingsTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("Réglages").font(.system(size: 30, weight: .bold, design: .rounded))
-                Label("Monero XMR • Cake Wallet", systemImage: "wallet.bifold.fill")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(MiningTheme.aqua)
-                Text(address)
-                    .font(.system(size: 11, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding(15)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(MiningTheme.panel, in: RoundedRectangle(cornerRadius: 14))
-                Text("Ceci est seulement ton adresse publique de réception. Le portefeuille Cake Wallet garde tes clés privées.")
-                    .font(.system(size: 12)).foregroundColor(MiningTheme.subtle)
-                Button("Changer de portefeuille", role: .destructive) {
-                    miner.stop()
-                    onDisconnect()
-                }
-                .padding(.vertical, 10)
-                Spacer(minLength: 30)
+    private var actionButton: some View {
+        Button {
+            if wantsMining {
+                wantsMining = false
+                miner.stop(reason: "En pause, appuie sur Démarrer pour reprendre")
+                UIApplication.shared.isIdleTimerDisabled = false
+            } else {
+                wantsMining = true
+                resumeIfAllowed()
             }
-            .padding(22)
+        } label: {
+            Label(wantsMining ? "Arrêter le minage" : "Démarrer le minage",
+                  systemImage: wantsMining ? "pause.fill" : "play.fill")
+                .font(.system(size: 18, weight: .bold))
+                .frame(maxWidth: .infinity)
+                .frame(height: 57)
+        }
+        .foregroundColor(.white)
+        .background(wantsMining ? ink : blue, in: RoundedRectangle(cornerRadius: 17))
+        .accessibilityHint("Met en pause ou reprend le calcul Monero sur cet iPhone")
+    }
+
+    private func metric(_ title: String, _ value: String, _ unit: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(secondary)
+            Text(value)
+                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .foregroundColor(ink)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+            Text(unit)
+                .font(.system(size: 11))
+                .foregroundColor(secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(15)
+        .background(card, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func compactMetric(_ title: String, _ value: String, _ symbol: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: symbol)
+                .foregroundColor(blue)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(ink)
+                Text(title)
+                    .font(.system(size: 10))
+                    .foregroundColor(secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(13)
+        .background(card, in: RoundedRectangle(cornerRadius: 15))
+    }
+
+    private var settingsScreen: some View {
+        ZStack {
+            background.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 17) {
+                    Text("Mon portefeuille")
+                        .font(.system(size: 27, weight: .bold))
+                        .foregroundColor(ink)
+                    Label("Cake Wallet · Monero XMR", systemImage: "checkmark.shield.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(blue)
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text("Adresse publique connectée")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(secondary)
+                        Text(String(address.prefix(13)) + "…" + String(address.suffix(11)))
+                            .font(.system(size: 15, weight: .medium, design: .monospaced))
+                            .foregroundColor(ink)
+                        Button {
+                            UIPasteboard.general.string = address
+                        } label: {
+                            Label("Copier l'adresse", systemImage: "doc.on.doc")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(blue)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(18)
+                    .background(card, in: RoundedRectangle(cornerRadius: 16))
+                    Text("Seule l'adresse de réception est enregistrée. Tes mots de récupération restent dans Cake Wallet.")
+                        .font(.system(size: 13))
+                        .foregroundColor(secondary)
+                    Button(role: .destructive) {
+                        wantsMining = false
+                        miner.stop(reason: "Compte déconnecté")
+                        UIApplication.shared.isIdleTimerDisabled = false
+                        onDisconnect()
+                    } label: {
+                        Label("Changer de portefeuille", systemImage: "qrcode.viewfinder")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .background(card, in: RoundedRectangle(cornerRadius: 15))
+                }
+                .padding(18)
+            }
         }
     }
 }
