@@ -39,7 +39,7 @@ final class MoneroMineEngine: ObservableObject {
 
     func start(to publicAddress: String) {
         guard MoneroQRCode.address(from: publicAddress) != nil else {
-            show("Adresse Monero incorrecte")
+            DispatchQueue.main.async { self.status = "Adresse Monero incorrecte" }
             return
         }
         lock.lock()
@@ -52,7 +52,8 @@ final class MoneroMineEngine: ObservableObject {
         // Do not overwrite workerEpoch: the old worker may be draining.
         sessionId = ""
         lock.unlock()
-        DispatchQueue.main.async {
+        let startPresentation = { [weak self] in
+            guard let self = self, self.isRunning(myEpoch) else { return }
             self.running = true
             self.rate = 0
             self.hashes = 0
@@ -60,6 +61,10 @@ final class MoneroMineEngine: ObservableObject {
             self.rejected = 0
             self.status = "Connexion sécurisée au pool…"
         }
+        // The UI must show the new state IMMEDIATELY when invoked from SwiftUI,
+        // otherwise a fast inactive/active transition can miss a restart.
+        if Thread.isMainThread { startPresentation() }
+        else { DispatchQueue.main.async(execute: startPresentation) }
         networkQueue.async { [weak self] in
             self?.connect(address: publicAddress, epoch: myEpoch)
         }
@@ -69,16 +74,20 @@ final class MoneroMineEngine: ObservableObject {
         lock.lock()
         started = false
         epoch += 1
+        let stoppedEpoch = epoch
         activeJob = nil
         let previous = conn
         conn = nil
         lock.unlock()
         previous?.cancel()
-        DispatchQueue.main.async {
+        let endPresentation = { [weak self] in
+            guard let self = self, self.currentEpoch() == stoppedEpoch else { return }
             self.running = false
             self.rate = 0
             self.status = reason
         }
+        if Thread.isMainThread { endPresentation() }
+        else { DispatchQueue.main.async(execute: endPresentation) }
     }
 
     private func isRunning(_ token: UInt64) -> Bool {
@@ -87,8 +96,22 @@ final class MoneroMineEngine: ObservableObject {
         return started && epoch == token
     }
 
+    private func currentEpoch() -> UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return epoch
+    }
+
     private func show(_ text: String) {
-        DispatchQueue.main.async { self.status = text }
+        lock.lock()
+        let token = epoch
+        let isActive = started
+        lock.unlock()
+        guard isActive else { return }
+        DispatchQueue.main.async {
+            guard self.isRunning(token) else { return }
+            self.status = text
+        }
     }
 
     private func connect(address: String, epoch token: UInt64) {
@@ -112,12 +135,23 @@ final class MoneroMineEngine: ObservableObject {
                 self.receive(on: connection, epoch: token)
             case .failed(let error):
                 self.stop(reason: "Pool injoignable : \(error.localizedDescription)")
+            case .waiting(let error):
+                self.show("Connexion au pool en attente : \(error.localizedDescription)")
             case .cancelled:
                 break
             default: break
             }
         }
         connection.start(queue: networkQueue)
+        networkQueue.asyncAfter(deadline: .now() + 30) { [weak self] in
+            guard let self = self, self.isRunning(token) else { return }
+            self.lock.lock()
+            let authenticated = !self.sessionId.isEmpty
+            self.lock.unlock()
+            if !authenticated {
+                self.stop(reason: "Délai dépassé : le pool n'a pas répondu après 30 secondes. Vérifie le Wi-Fi et réessaie.")
+            }
+        }
     }
 
     private func send(_ payload: [String: Any], on connection: NWConnection) {
