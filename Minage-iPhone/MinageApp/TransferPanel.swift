@@ -8,6 +8,7 @@ final class PoolTransferStats: ObservableObject {
     @Published var defaultPayoutXMR: Double?
     @Published var unpaidXMR: Double?
     @Published var paidXMR: Double?
+    @Published var walletThresholdXMR: Double?
     @Published var status = "Statistiques du pool non chargées"
     @Published var updating = false
 
@@ -57,6 +58,11 @@ final class PoolTransferStats: ObservableObject {
                 if let paid = (wallet["paid"] as? NSNumber)?.doubleValue {
                     paidXMR = paid / 1_000_000_000_000.0
                 }
+                if let threshold = (wallet["thold"] as? NSNumber)?.doubleValue {
+                    walletThresholdXMR = threshold / 1_000_000_000_000.0
+                } else if let threshold = (wallet["threshold"] as? NSNumber)?.doubleValue {
+                    walletThresholdXMR = threshold / 1_000_000_000_000.0
+                }
                 status = "Données fournies par HashVault, pas par Cake Wallet"
             } catch {
                 // No invented zero balance when a wallet has no pool record.
@@ -74,29 +80,77 @@ struct TransferPanel: View {
     private let blue = Color(red: 0.09, green: 0.36, blue: 0.91)
     private let secondary = Color(red: 0.40, green: 0.45, blue: 0.54)
 
+    // Only a wallet-specific threshold is authoritative. The pool default
+    // is an illustration, never a confirmation of a specific wallet's settings.
+    private var referenceThreshold: Double? {
+        stats.walletThresholdXMR ?? stats.defaultPayoutXMR
+    }
+
+    private var proportion: Double? {
+        guard let balance = stats.unpaidXMR,
+              let threshold = referenceThreshold, threshold > 0 else { return nil }
+        return min(max(balance / threshold, 0), 1)
+    }
+
+    private var paymentExplanation: String {
+        guard let balance = stats.unpaidXMR else {
+            return "Le pool n'a pas encore fourni ton solde. Aucun montant n'est inventé."
+        }
+        guard let threshold = referenceThreshold else {
+            return "Solde reçu, mais seuil de paiement non disponible."
+        }
+        if balance >= threshold {
+            return stats.walletThresholdXMR != nil
+                ? "Seuil déclaré atteint. Le pool vérifiera les fonds disponibles et déclenchera le paiement selon ses règles."
+                : "Le solde dépasse le seuil par défaut. Confirme ton seuil personnel sur HashVault : il peut être différent."
+        }
+        return "Il manque encore \(String(format: "%.8f", threshold - balance)) XMR pour le seuil \(stats.walletThresholdXMR != nil ? "du portefeuille" : "par défaut")."
+    }
+
     var body: some View {
         ZStack {
             background.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Transferts")
-                        .font(.system(size: 27, weight: .bold))
+                    Text("Transfert vers Cake Wallet")
+                        .font(.system(size: 25, weight: .bold, design: .rounded))
                         .foregroundColor(ink)
-                    Text("Tes récompenses Monero sont versées par le pool directement vers Cake Wallet.")
+
+                    Label("Versements automatiques du pool", systemImage: "checkmark.shield.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(blue)
+                    Text("Tes XMR restent sur HashVault jusqu'au paiement. Après le seuil, HashVault les envoie à l'adresse publique Cake Wallet déjà connectée.")
                         .font(.system(size: 13))
                         .foregroundColor(secondary)
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Gains en attente au pool")
-                            .font(.system(size: 13, weight: .medium))
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("GAINS EN ATTENTE")
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(1.5)
                             .foregroundColor(secondary)
+
                         Text(stats.unpaidXMR.map { String(format: "%.8f XMR", $0) } ?? "Non disponible")
-                            .font(.system(size: 25, weight: .bold, design: .rounded))
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
                             .foregroundColor(ink)
                             .monospacedDigit()
-                        Text("Données du pool, pas ton solde Cake Wallet")
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+
+                        if let proportion = proportion {
+                            ProgressView(value: proportion)
+                                .accentColor(blue)
+                            HStack {
+                                Text("Progression indicative")
+                                Spacer()
+                                Text("\(Int(proportion * 100)) %")
+                            }
                             .font(.system(size: 11))
                             .foregroundColor(secondary)
+                        }
+                        Text(paymentExplanation)
+                            .font(.system(size: 12))
+                            .foregroundColor(secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(18)
@@ -104,43 +158,59 @@ struct TransferPanel: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("Seuil de paiement minimum")
-                                .font(.system(size: 13))
-                                .foregroundColor(secondary)
-                            Spacer()
-                            Text(stats.minimumPayoutXMR.map { String(format: "%.6f XMR", $0) } ?? "Indisponible")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(ink)
+                            Text("Seuil minimum technique")
+                            Spacer(minLength: 6)
+                            Text(stats.minimumPayoutXMR.map { String(format: "%.6f XMR", $0) } ?? "Inconnu")
+                                .fontWeight(.semibold)
                         }
                         Divider()
                         HStack {
-                            Text("Seuil par défaut")
-                                .font(.system(size: 13))
+                            Text(stats.walletThresholdXMR == nil ? "Seuil par défaut" : "Seuil de ton compte")
+                            Spacer(minLength: 6)
+                            Text(referenceThreshold.map { String(format: "%.6f XMR", $0) } ?? "Inconnu")
+                                .fontWeight(.semibold)
+                        }
+                        if stats.walletThresholdXMR == nil {
+                            Text("Le seuil personnel n'a pas été confirmé. Modifiable sur le site du pool.")
+                                .font(.system(size: 11))
                                 .foregroundColor(secondary)
-                            Spacer()
-                            Text(stats.defaultPayoutXMR.map { String(format: "%.6f XMR", $0) } ?? "Indisponible")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(ink)
+                        }
+                        if let sent = stats.paidXMR {
+                            Divider()
+                            HStack {
+                                Text("Total déjà versé par le pool")
+                                Spacer(minLength: 6)
+                                Text(String(format: "%.8f XMR", sent))
+                                    .fontWeight(.semibold)
+                            }
                         }
                     }
+                    .font(.system(size: 12))
+                    .foregroundColor(ink)
                     .padding(17)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
 
                     Button {
-                        UIApplication.shared.open(URL(string: "https://hashvault.pro/monero")!)
+                        // Copy only the public address, not any secret credentials.
+                        UIPasteboard.general.string = address
+                        UIApplication.shared.open(URL(string: "https://hashvault.pro/monero/dashboard")!)
                     } label: {
-                        Label("Voir mes paiements sur HashVault", systemImage: "arrow.up.right.square")
-                            .font(.system(size: 14, weight: .bold))
+                        Label("Gérer le seuil et les paiements", systemImage: "arrow.up.right.square")
+                            .font(.system(size: 14, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                     }
                     .foregroundColor(.white)
                     .background(blue, in: RoundedRectangle(cornerRadius: 15))
 
+                    Text("Ton adresse XMR est copiée pour la coller sur HashVault. Aucun paiement n'est lancé par ce bouton : c'est le pool qui effectue les versements.")
+                        .font(.system(size: 12))
+                        .foregroundColor(secondary)
+
                     Button {
                         stats.refresh(address: address)
                     } label: {
-                        Label(stats.updating ? "Actualisation…" : "Actualiser mes gains", systemImage: "arrow.clockwise")
+                        Label(stats.updating ? "Actualisation…" : "Actualiser les gains", systemImage: "arrow.clockwise")
                             .font(.system(size: 14, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 13)
@@ -152,8 +222,8 @@ struct TransferPanel: View {
                     Text(stats.status)
                         .font(.system(size: 12))
                         .foregroundColor(secondary)
-                    Text("Le pool décide quand il paie. Minager ne peut pas transférer des XMR avant le seuil et ne connaît pas tes clés privées.")
-                        .font(.system(size: 12))
+                    Text("Les paiements ne sont possibles que si le pool a effectivement attribué des récompenses. L'application ne connaît pas les clés privées Cake Wallet.")
+                        .font(.system(size: 11))
                         .foregroundColor(secondary)
                 }
                 .padding(18)
