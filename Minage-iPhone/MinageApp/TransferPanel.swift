@@ -68,94 +68,97 @@ final class PoolTransferStats: ObservableObject {
 struct TransferPanel: View {
     let address: String
     @StateObject private var stats = PoolTransferStats()
-    private let bg = Color(red: 0.035, green: 0.052, blue: 0.115)
-    private let surface = Color(red: 0.09, green: 0.12, blue: 0.22)
-    private let cyan = Color(red: 0.24, green: 0.88, blue: 0.94)
-    private let muted = Color(red: 0.62, green: 0.68, blue: 0.79)
+
+    private let background = Color(red: 0.965, green: 0.973, blue: 0.985)
+    private let ink = Color(red: 0.10, green: 0.15, blue: 0.25)
+    private let blue = Color(red: 0.09, green: 0.36, blue: 0.91)
+    private let secondary = Color(red: 0.40, green: 0.45, blue: 0.54)
 
     var body: some View {
         ZStack {
-            bg.ignoresSafeArea()
+            background.ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: 17) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("TRANSFERT").font(.system(size: 11, weight: .bold))
-                                .tracking(3).foregroundColor(cyan)
-                            Text("Vers Cake Wallet")
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                        }
-                        Spacer()
-                        Image(systemName: "arrow.left.arrow.right.circle.fill")
-                            .font(.system(size: 39)).foregroundColor(cyan)
-                    }
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("SOLDE EN ATTENTE AU POOL")
-                            .font(.system(size: 11, weight: .bold)).tracking(1.7)
-                            .foregroundColor(muted)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Transferts")
+                        .font(.system(size: 27, weight: .bold))
+                        .foregroundColor(ink)
+                    Text("Tes récompenses Monero sont versées par le pool directement vers Cake Wallet.")
+                        .font(.system(size: 13))
+                        .foregroundColor(secondary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Gains en attente au pool")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(secondary)
                         Text(stats.unpaidXMR.map { String(format: "%.8f XMR", $0) } ?? "Non disponible")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .font(.system(size: 25, weight: .bold, design: .rounded))
+                            .foregroundColor(ink)
                             .monospacedDigit()
-                        Text("Le solde Cake Wallet est séparé du solde en attente au pool. Les gains et transferts ne sont jamais simulés.")
-                            .font(.system(size: 12))
-                            .foregroundColor(muted)
+                        Text("Données du pool, pas ton solde Cake Wallet")
+                            .font(.system(size: 11))
+                            .foregroundColor(secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(18)
-                    .background(surface, in: RoundedRectangle(cornerRadius: 20))
-                    HStack(spacing: 12) {
-                        statCard("SEUIL MINIMAL", stats.minimumPayoutXMR.map { String(format: "%.4f", $0) } ?? "…")
-                        statCard("SEUIL PAR DÉFAUT", stats.defaultPayoutXMR.map { String(format: "%.3f", $0) } ?? "…")
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Seuil de paiement minimum")
+                                .font(.system(size: 13))
+                                .foregroundColor(secondary)
+                            Spacer()
+                            Text(stats.minimumPayoutXMR.map { String(format: "%.6f XMR", $0) } ?? "Indisponible")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(ink)
+                        }
+                        Divider()
+                        HStack {
+                            Text("Seuil par défaut")
+                                .font(.system(size: 13))
+                                .foregroundColor(secondary)
+                            Spacer()
+                            Text(stats.defaultPayoutXMR.map { String(format: "%.6f XMR", $0) } ?? "Indisponible")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(ink)
+                        }
                     }
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("Comment marche le transfert ?", systemImage: "info.circle.fill")
-                            .foregroundColor(cyan).font(.system(size: 14, weight: .semibold))
-                        Text("1. Le pool vérifie les parts de minage acceptées et accumule les gains éventuels.")
-                        Text("2. Lorsque le seuil de versement fixé par le pool est atteint, il paie directement ton adresse Cake Wallet.")
-                        Text("3. Tu peux consulter et modifier le seuil sur le site du pool, si celui-ci l'autorise.")
-                        Text("Notre application n'a aucun accès à tes clés privées et ne peut pas déclencher un paiement que le pool n'autorise pas.")
-                            .foregroundColor(.orange)
-                    }
-                    .font(.system(size: 13))
                     .padding(17)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(surface, in: RoundedRectangle(cornerRadius: 18))
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
+
                     Button {
                         UIApplication.shared.open(URL(string: "https://hashvault.pro/monero")!)
                     } label: {
-                        Label("Gérer le transfert sur HashVault", systemImage: "arrow.up.right.square")
-                            .font(.system(size: 15, weight: .bold))
+                        Label("Voir mes paiements sur HashVault", systemImage: "arrow.up.right.square")
+                            .font(.system(size: 14, weight: .bold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                     }
-                    .foregroundColor(bg)
-                    .background(cyan, in: RoundedRectangle(cornerRadius: 15))
-                    Button { stats.refresh(address: address) } label: {
-                        Label("Actualiser les gains et seuils", systemImage: "arrow.clockwise")
-                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .foregroundColor(.white)
+                    .background(blue, in: RoundedRectangle(cornerRadius: 15))
+
+                    Button {
+                        stats.refresh(address: address)
+                    } label: {
+                        Label(stats.updating ? "Actualisation…" : "Actualiser mes gains", systemImage: "arrow.clockwise")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
                     }
                     .disabled(stats.updating)
-                    .foregroundColor(cyan)
-                    Text(stats.status).font(.system(size: 12)).foregroundColor(muted)
-                    Text("Le pool publie un seuil technique minimum et un seuil par défaut qui peuvent être différents. Les valeurs sont lues en direct et peuvent changer.")
-                        .font(.system(size: 11)).foregroundColor(muted)
+                    .foregroundColor(blue)
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
+
+                    Text(stats.status)
+                        .font(.system(size: 12))
+                        .foregroundColor(secondary)
+                    Text("Le pool décide quand il paie. Minager ne peut pas transférer des XMR avant le seuil et ne connaît pas tes clés privées.")
+                        .font(.system(size: 12))
+                        .foregroundColor(secondary)
                 }
-                .padding(20)
+                .padding(18)
             }
         }
         .onAppear { stats.refresh(address: address) }
-    }
-
-    private func statCard(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(label).font(.system(size: 10, weight: .bold))
-                .foregroundColor(muted)
-            Text(value).font(.system(size: 22, weight: .bold))
-                .minimumScaleFactor(0.7).lineLimit(1)
-            Text("XMR").font(.system(size: 11)).foregroundColor(muted)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(surface, in: RoundedRectangle(cornerRadius: 18))
     }
 }

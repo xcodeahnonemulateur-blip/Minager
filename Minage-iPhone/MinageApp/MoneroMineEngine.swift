@@ -23,7 +23,8 @@ final class MoneroMineEngine: ObservableObject {
     private var activeJob: MiningJob?
     private var pendingIDs = Set<Int>()
     private var nextRequestID = 2
-    private var workerActive = false
+    // Epoch of the worker queued on the SERIAL worker queue.
+    private var workerEpoch: UInt64?
     private let hostname = "pool.hashvault.pro"
     private let poolPort: UInt16 = 443
 
@@ -48,7 +49,7 @@ final class MoneroMineEngine: ObservableObject {
         let myEpoch = epoch
         activeJob = nil
         pendingIDs = []
-        workerActive = false
+        // Do not overwrite workerEpoch: the old worker may be draining.
         sessionId = ""
         lock.unlock()
         DispatchQueue.main.async {
@@ -212,8 +213,8 @@ final class MoneroMineEngine: ObservableObject {
         let job = MiningJob(id: id, seed: seed, blob: blob, target: difficulty, useV2: v2, epoch: token)
         lock.lock()
         activeJob = job
-        let shouldLaunch = !workerActive
-        if shouldLaunch { workerActive = true }
+        let shouldLaunch = workerEpoch != token
+        if shouldLaunch { workerEpoch = token }
         lock.unlock()
         show("Travail reçu • initialisation RandomX light…")
         if shouldLaunch {
@@ -224,7 +225,7 @@ final class MoneroMineEngine: ObservableObject {
     private func mine(epoch token: UInt64) {
         defer {
             lock.lock()
-            workerActive = false
+            if workerEpoch == token { workerEpoch = nil }
             lock.unlock()
         }
         var activeSeed = Data()
