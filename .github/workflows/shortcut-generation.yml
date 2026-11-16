@@ -18,13 +18,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Tester le compilateur
+      - name: Test du mini-langage et du nouvel assembleur
         run: python -m unittest discover -s shortcut-generation/tests -v
-      - name: Générer les exemples (non signés)
+      - name: Générer les exemples et la recette avancée (non signés)
         run: |
           python shortcut-generation/compile.py shortcut-generation/examples/bonjour.sgen -o output/bonjour.unsigned.shortcut
           python shortcut-generation/compile.py shortcut-generation/examples/alerte.sgen -o output/alerte.unsigned.shortcut
-      - name: Enregistrer les fichiers (non importables directement sur iPhone)
+          python shortcut-generation/assemble.py shortcut-generation/examples/centre-iphone.json -o output/centre-iphone.unsigned.shortcut
+      - name: Artefacts GitHub (NON signés)
         uses: actions/upload-artifact@v4
         with:
           name: shortcuts-unsigned
