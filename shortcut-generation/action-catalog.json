@@ -177,7 +177,7 @@
       "defaults": {
         "WFEncodeMode": "Decode"
       },
-      "output": "Decoded Base64",
+      "output": "Base64 Encoded",
       "experimental": true
     }
   }
