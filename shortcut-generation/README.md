@@ -1,47 +1,71 @@
-# 🍎 Shortcut Génération (prototype public)
+# 🍎 Shortcut Génération 0.2 — Prototype public
 
-**Accès public sans compte GitHub :** ce dossier est publié dans la branche `shortcut-generation` du dépôt public `xcodeahnonemulateur-blip/Minager`. Le dépôt principal `Minager` n'a pas été modifié sur sa branche `main`.
+**Projet expérimental** publié dans un dossier de la branche `shortcut-generation` du dépôt public `xcodeahnonemulateur-blip/Minager`. La branche principale `main` de Minager n'est pas modifiée.
 
-Ce n'est **pas un nouveau dépôt indépendant**. C'est un espace public séparé à l'intérieur d'un dépôt existant.
+> Ce dépôt n'est pas un nouveau dépôt indépendant. GitHub permet de lire les fichiers de cette branche sans connexion.
 
-## Concept
+## Le défi : assembler des actions à partir d'une idée
 
-Écrire une idée de raccourci Apple, la traduire en langage simple **SGEN**, puis compiler un fichier `.shortcut`.
+Le catalogue `action-catalog.json` associe les actions logiques (par exemple `select_photo`) à leurs identifiants Apple, paramètres et sorties.
 
-Exemple dans `examples/bonjour.sgen` :
+Le moteur `assemble.py` transforme une recette JSON en fichier .shortcut avec :
+- sorties reliées aux entrées par UUID, y compris les champs de texte dynamique ;
+- menus avec branches ;
+- conditions « a une valeur », avec branche Sinon ;
+- validation structurelle et détection de références inconnues ;
+- compatibilité de schémas ciblée iOS 27 pour la reconnaissance du texte des photos.
 
-```text
-NOM "Mon premier raccourci"
-TEXTE "Bonjour depuis Shortcut Génération !"
-AFFICHER
-NOTIFIER "Shortcut Génération" "Exemple de notification."
-```
+### Démonstration « Centre de commandes iPhone »
 
-## Compiler (Python standard, sans abonnement)
+Recette : `examples/centre-iphone.json`
+
+Trois choix dans un menu :
+1. **Lire le texte d'une photo :** Sélectionner une photo → Extraire texte → Si le texte existe → Afficher → Copier → Notifier.
+2. **Archiver un document :** Sélectionner une photo → Créer PDF → Ouvrir le dialogue d'enregistrement.
+3. **Créer un QR code :** Demander du texte → Générer QR code → Aperçu → Partager.
+
+### Générer le fichier depuis Windows ou GitHub Actions
+
+Depuis la racine du dépôt :
 
 ```sh
-python shortcut-generation/compile.py shortcut-generation/examples/bonjour.sgen -o bonjour.unsigned.shortcut
+python shortcut-generation/assemble.py shortcut-generation/examples/centre-iphone.json -o centre-iphone.unsigned.shortcut
 python -m unittest discover -s shortcut-generation/tests -v
 ```
 
-- `compile.py` : compilateur expérimental
-- `SKILL.md` : directives pour ChatGPT/Codex
-- `examples/` : exemples
-- `tests/` : tests
-- `.github/workflows/shortcut-generation.yml` : compilation GitHub Actions (disponibilité des exécutions à vérifier)
+Aucune API payante ou modèle à installer. La traduction d'une demande en français vers une recette JSON s'effectue actuellement via ChatGPT et le fichier `SKILL.md`.
 
-## ⚠️ Limites actuelles
-
-**Ce prototype n'est pas encore un générateur de liens iCloud installables.**
-
-Les fichiers créés sont **non signés**. Ils ne sont donc pas directement importables sur un iPhone récent. Pour signer sur un Mac connecté à iCloud :
+### Intégrer une photo/logo fourni par l'utilisateur
 
 ```sh
-shortcuts sign --mode anyone --input bonjour.unsigned.shortcut --output bonjour.signed.shortcut
+python shortcut-generation/add_logo.py shortcut-generation/examples/centre-iphone.json chemin/mon-logo.png -o ma-recette-privee.json
+python shortcut-generation/assemble.py ma-recette-privee.json -o centre-logo.unsigned.shortcut
 ```
 
-La signature ne crée pas automatiquement un lien `icloud.com/shortcuts/...`. Ce lien doit être partagé depuis l'application Raccourcis, car Apple ne documente pas d'API publique de publication.
+Prend en charge un logo PNG/JPEG de 400 Ko au maximum. Le script crée une branche de menu « Afficher mon logo » avec image intégrée en Base64. Il ne publie pas automatiquement ton image.
 
-Le langage ne prend en charge que quelques actions au départ : texte, affichage, notification, alerte et une instruction experte générique. Les déclencheurs, menus, boucles, variables et actions de nombreuses applications restent à développer.
+**Important :** le logo intégré dans le contenu n'est pas automatiquement l'icône sur l'écran d'accueil. Apple permet de choisir la photo au moment d'ajouter le raccourci à l'écran d'accueil.
 
-Ne mettez jamais des identifiants Apple, secrets ou fichiers privés dans ce dépôt public.
+## État réel et limites
+
+Le logiciel génère un **fichier .shortcut NON SIGNÉ**. Celui-ci ne peut PAS être importé directement dans Raccourcis sur un iPhone récent. La structure est testable localement mais aucun lancement sur iPhone n'a encore été validé. Les références et paramètres peuvent varier selon la version d'iOS.
+
+Pour rendre le raccourci importable, il faut normalement un Mac connecté à iCloud et la commande officielle :
+
+```sh
+shortcuts sign --mode anyone --input centre-iphone.unsigned.shortcut --output centre-iphone.signed.shortcut
+```
+
+La signature ne publie pas un lien `icloud.com/shortcuts/...`, qui doit être généré depuis l'app Raccourcis. GitHub Actions seul ne garantit ni signature ni lien iCloud.
+
+**Notre catalogue n'est pas exhaustif.** Apple ne publie pas de catalogue public stable avec tous les identifiants et paramètres d'actions. Les actions tierces changent selon les apps et les versions d'iOS.
+
+Documentation utilisée :
+- https://support.apple.com/guide/shortcuts/welcome/ios
+- https://github.com/viticci/shortcuts-playground-plugin
+- https://github.com/sebj/iOS-Shortcuts-Reference
+- https://docs.scpl.dev/actions
+
+## Sécurité
+
+Le dépôt est public. Ne pas y ajouter de photos privées, de mots de passe, de comptes Apple ou de données iCloud. Les recettes générées avec logo personnel doivent rester locales sauf consentement explicite.
