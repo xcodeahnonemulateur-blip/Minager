@@ -1,0 +1,184 @@
+{
+  "version": "0.2",
+  "target": "ios27",
+  "notes": "Catalogue CURATIF, non exhaustif. Les noms de sortie et paramètres doivent être confirmés par essais sur appareil. Pas d'API d'actions Apple officielle complète.",
+  "sources": [
+    "https://support.apple.com/guide/shortcuts/welcome/ios",
+    "https://github.com/viticci/shortcuts-playground-plugin",
+    "https://github.com/sebj/iOS-Shortcuts-Reference"
+  ],
+  "actions": {
+    "comment": {
+      "identifier": "is.workflow.actions.comment",
+      "parameters": {
+        "text": "WFCommentActionText"
+      },
+      "required": [
+        "text"
+      ],
+      "output": null
+    },
+    "text": {
+      "identifier": "is.workflow.actions.gettext",
+      "parameters": {
+        "text": "WFTextActionText"
+      },
+      "required": [
+        "text"
+      ],
+      "output": "Text"
+    },
+    "ask_text": {
+      "identifier": "is.workflow.actions.ask",
+      "parameters": {
+        "prompt": "WFAskActionPrompt"
+      },
+      "required": [
+        "prompt"
+      ],
+      "defaults": {
+        "WFInputType": "Text"
+      },
+      "output": "Provided Input"
+    },
+    "select_photo": {
+      "identifier": "is.workflow.actions.selectphoto",
+      "parameters": {},
+      "output": "Photos"
+    },
+    "extract_text": {
+      "identifier": "is.workflow.actions.extracttextfromimage",
+      "parameters": {
+        "source": "imageFile"
+      },
+      "required": [
+        "source"
+      ],
+      "output": "Text",
+      "min_ios": 27
+    },
+    "make_pdf": {
+      "identifier": "is.workflow.actions.makepdf",
+      "parameters": {
+        "source": "WFInput"
+      },
+      "required": [
+        "source"
+      ],
+      "output": "PDF"
+    },
+    "save_file": {
+      "identifier": "is.workflow.actions.documentpicker.save",
+      "parameters": {
+        "source": "WFInput",
+        "ask_where": "WFAskWhereToSave",
+        "overwrite": "WFSaveFileOverwrite"
+      },
+      "required": [
+        "source"
+      ],
+      "defaults": {
+        "WFAskWhereToSave": true,
+        "WFSaveFileOverwrite": false
+      },
+      "output": "File"
+    },
+    "show": {
+      "identifier": "is.workflow.actions.showresult",
+      "parameters": {
+        "source": "Text",
+        "text": "Text"
+      },
+      "output": null,
+      "display_parameters": [
+        "Text"
+      ]
+    },
+    "clipboard": {
+      "identifier": "is.workflow.actions.setclipboard",
+      "parameters": {
+        "source": "WFInput"
+      },
+      "required": [
+        "source"
+      ],
+      "output": null
+    },
+    "share": {
+      "identifier": "is.workflow.actions.share",
+      "parameters": {
+        "source": "WFInput"
+      },
+      "required": [
+        "source"
+      ],
+      "output": null
+    },
+    "qr": {
+      "identifier": "is.workflow.actions.generatebarcode",
+      "parameters": {
+        "source": "WFInput"
+      },
+      "required": [
+        "source"
+      ],
+      "output": "QR Code"
+    },
+    "preview": {
+      "identifier": "is.workflow.actions.quicklook",
+      "parameters": {
+        "source": "WFInput"
+      },
+      "required": [
+        "source"
+      ],
+      "output": null
+    },
+    "notify": {
+      "identifier": "is.workflow.actions.notification",
+      "parameters": {
+        "title": "WFNotificationActionTitle",
+        "body": "WFNotificationActionBody"
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "output": null,
+      "display_parameters": [
+        "WFNotificationActionTitle",
+        "WFNotificationActionBody"
+      ]
+    },
+    "alert": {
+      "identifier": "is.workflow.actions.alert",
+      "parameters": {
+        "title": "WFAlertActionTitle",
+        "body": "WFAlertActionMessage"
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "output": null,
+      "display_parameters": [
+        "WFAlertActionTitle",
+        "WFAlertActionMessage"
+      ]
+    },
+    "base64_decode": {
+      "identifier": "is.workflow.actions.base64encode",
+      "parameters": {
+        "source": "WFInput"
+      },
+      "required": [
+        "source"
+      ],
+      "defaults": {
+        "WFEncodeMode": "Decode"
+      },
+      "output": "Decoded Base64",
+      "experimental": true
+    }
+  }
+}
