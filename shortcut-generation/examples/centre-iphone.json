@@ -1,0 +1,172 @@
+{
+  "name": "Centre de commandes iPhone",
+  "ios": 27,
+  "actions": [
+    {
+      "action": "comment",
+      "params": {
+        "text": "Prototype expérimental : vérifiez les actions avant de lancer le raccourci."
+      }
+    },
+    {
+      "action": "comment",
+      "params": {
+        "text": "Trois outils : lecture de texte dans une photo, archivage PDF, création de QR code."
+      }
+    },
+    {
+      "menu": {
+        "prompt": "Que veux-tu faire ?",
+        "cases": [
+          {
+            "title": "Lire le texte d'une photo",
+            "actions": [
+              {
+                "action": "comment",
+                "params": {
+                  "text": "Choisir une photo, extraire son texte, puis proposer de le copier."
+                }
+              },
+              {
+                "action": "select_photo",
+                "as": "photo_ocr"
+              },
+              {
+                "action": "extract_text",
+                "as": "ocr",
+                "params": {
+                  "source": {
+                    "ref": "photo_ocr"
+                  }
+                }
+              },
+              {
+                "if_present": {
+                  "ref": "ocr",
+                  "then": [
+                    {
+                      "action": "show",
+                      "params": {
+                        "source": {
+                          "ref": "ocr"
+                        }
+                      }
+                    },
+                    {
+                      "action": "clipboard",
+                      "params": {
+                        "source": {
+                          "ref": "ocr"
+                        }
+                      }
+                    },
+                    {
+                      "action": "notify",
+                      "params": {
+                        "title": "Texte reconnu",
+                        "body": "Le texte a été copié dans le presse-papiers."
+                      }
+                    }
+                  ],
+                  "else": [
+                    {
+                      "action": "alert",
+                      "params": {
+                        "title": "Aucun texte",
+                        "body": "Je n'ai trouvé aucun texte lisible dans cette photo."
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "title": "Transformer une photo en PDF",
+            "actions": [
+              {
+                "action": "comment",
+                "params": {
+                  "text": "Choisir une photo, générer le PDF, puis demander le dossier de sauvegarde."
+                }
+              },
+              {
+                "action": "select_photo",
+                "as": "photo_pdf"
+              },
+              {
+                "action": "make_pdf",
+                "as": "pdf",
+                "params": {
+                  "source": {
+                    "ref": "photo_pdf"
+                  }
+                }
+              },
+              {
+                "action": "save_file",
+                "params": {
+                  "source": {
+                    "ref": "pdf"
+                  },
+                  "ask_where": true,
+                  "overwrite": false
+                }
+              },
+              {
+                "action": "notify",
+                "params": {
+                  "title": "PDF",
+                  "body": "Vérifie l'enregistrement dans Fichiers."
+                }
+              }
+            ]
+          },
+          {
+            "title": "Créer un QR code",
+            "actions": [
+              {
+                "action": "comment",
+                "params": {
+                  "text": "Saisir une adresse web ou du texte, créer un QR et ouvrir le partage."
+                }
+              },
+              {
+                "action": "ask_text",
+                "as": "saisie",
+                "params": {
+                  "prompt": "Quel texte ou lien veux-tu transformer en QR code ?"
+                }
+              },
+              {
+                "action": "qr",
+                "as": "qr_code",
+                "params": {
+                  "source": {
+                    "ref": "saisie"
+                  }
+                }
+              },
+              {
+                "action": "preview",
+                "params": {
+                  "source": {
+                    "ref": "qr_code"
+                  }
+                }
+              },
+              {
+                "action": "share",
+                "params": {
+                  "source": {
+                    "ref": "qr_code"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
