@@ -1,0 +1,8 @@
+#include 'actions/web'
+
+#define name Transfert Demo - Apercu
+#define color green
+#define mac false
+
+// Fenetre integree (Safari View Controller). Aucun argent reel.
+showWebpage("https://demo-banque-elegante.lovable.app/transfert", false)
