@@ -1,0 +1,35 @@
+// Démo du Centre de commandes iPhone
+// Source de test pour Cherri Playground (https://playground.cherrilang.org)
+// Générée à partir de la même idée que examples/centre-iphone.json.
+// IMPORTANT : cette version Cherri doit encore être compilée et testée sur l'iPhone.
+
+#include 'actions/photos'
+#include 'actions/images'
+#include 'actions/documents'
+#include 'actions/pdf'
+#include 'actions/sharing'
+
+#define name Centre de commandes iPhone
+#define color darkblue
+#define mac false
+
+menu "Que veux-tu faire ?" {
+    item "Lire le texte d'une photo":
+        const image1 = selectPhotos()
+        const texteReconnu = extractImageText(image1)
+        show("{texteReconnu}")
+        setClipboard(texteReconnu)
+        showNotification("Texte copié dans le presse-papiers.", "Scanner intelligent")
+
+    item "Transformer une photo en PDF":
+        const image2 = selectPhotos()
+        const document = makePDF(image2)
+        saveFilePrompt(document)
+        showNotification("Vérifie le dossier Fichiers.", "PDF")
+
+    item "Créer un QR code":
+        const texteQR = prompt("Quel texte ou lien convertir en QR code ?")
+        const qrcode = makeQRCode(texteQR)
+        quicklook(qrcode)
+        share(qrcode)
+}
