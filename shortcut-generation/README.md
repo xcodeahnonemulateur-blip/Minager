@@ -69,3 +69,19 @@ Documentation utilisée :
 ## Sécurité
 
 Le dépôt est public. Ne pas y ajouter de photos privées, de mots de passe, de comptes Apple ou de données iCloud. Les recettes générées avec logo personnel doivent rester locales sauf consentement explicite.
+
+
+## Essai depuis un iPhone sans ordinateur : Cherri Playground
+
+Une seconde implémentation expérimentale de la même démonstration se trouve dans `examples/centre-iphone.cherri`.
+
+1. Ouvre https://github.com/xcodeahnonemulateur-blip/Minager/blob/shortcut-generation/shortcut-generation/examples/centre-iphone.cherri pour copier le code source.
+2. Ouvre https://playground.cherrilang.org dans Safari, colle le code dans l'éditeur.
+3. Lance la compilation avec le bouton marteau du Playground.
+4. Si la compilation réussit, utilise Share / Sign pour demander la signature distante HubSign, puis télécharge le raccourci signé.
+5. Dans Fichiers sur ton iPhone, ouvre le fichier signé, examine les blocs proposés et confirme son ajout dans Raccourcis.
+
+Ceci est une **possibilité à tester**, pas un raccourci déjà signé. La signature dépend de la disponibilité et de l'acceptation du service externe HubSign. Ne colle pas de secrets, mots de passe, données personnelles ou images privées dans un service web sans vérifier leur traitement.
+
+Documentation : https://cherrilang.org/faq.html et https://cherrilang.org/language/menus.html
+
