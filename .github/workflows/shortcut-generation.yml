@@ -1,0 +1,31 @@
+name: Shortcut Generation (unsigned)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - shortcut-generation
+    paths:
+      - "shortcut-generation/**"
+      - ".github/workflows/shortcut-generation.yml"
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tester le compilateur
+        run: python -m unittest discover -s shortcut-generation/tests -v
+      - name: Générer les exemples (non signés)
+        run: |
+          python shortcut-generation/compile.py shortcut-generation/examples/bonjour.sgen -o output/bonjour.unsigned.shortcut
+          python shortcut-generation/compile.py shortcut-generation/examples/alerte.sgen -o output/alerte.unsigned.shortcut
+      - name: Enregistrer les fichiers (non importables directement sur iPhone)
+        uses: actions/upload-artifact@v4
+        with:
+          name: shortcuts-unsigned
+          path: output/*.shortcut
