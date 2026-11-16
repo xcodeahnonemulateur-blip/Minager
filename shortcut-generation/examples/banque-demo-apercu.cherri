@@ -1,0 +1,8 @@
+#include 'actions/web'
+
+#define name Banque Demo - Apercu
+#define color darkblue
+#define mac false
+
+// Fenetre integree (Safari View Controller). Simulation seulement.
+showWebpage("https://demo-banque-elegante.lovable.app/banque", false)
