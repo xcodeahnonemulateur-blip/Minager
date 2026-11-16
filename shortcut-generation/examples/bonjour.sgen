@@ -1,0 +1,5 @@
+# Démonstration
+NOM "Mon premier raccourci"
+TEXTE "Bonjour depuis Shortcut Génération !"
+AFFICHER
+NOTIFIER "Shortcut Génération" "Exemple de notification."
